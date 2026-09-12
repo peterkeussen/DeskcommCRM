@@ -3633,12 +3633,29 @@ async function executarTurnoDoAgente(
       },
       { registry: deps.registry, log: runLog },
     );
-    const content = parseCheckpointText(
-      closing.result.text.replace(
-        /https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/g,
-        '[link da reunião disponível na Agenda]',
-      ),
+    const closingTextSanitizado = closing.result.text.replace(
+      /https:\/\/meet\.google\.com\/[a-zA-Z0-9-]+/g,
+      '[link da reunião disponível na Agenda]',
     );
+    let content: CheckpointContent;
+    try {
+      content = parseCheckpointText(closingTextSanitizado);
+    } catch (err) {
+      // Só em preview: o texto aqui é a resposta do MODELO a um cenário de
+      // TESTE (a mensagem de exemplo digitada na tela, nunca uma conversa real
+      // de cliente) — seguro de logar, ao contrário do turno de produção, onde
+      // este mesmo texto pode carregar PII e por isso NUNCA é logado (ver
+      // parseCheckpointText). Sem isto, quem testa um agente e recebe
+      // "preview_failed" não tem como saber SE o modelo devolveu prosa, JSON
+      // truncado ou markdown — só que falhou.
+      if (preview) {
+        runLog.error('preview: fechamento do turno não gerou checkpoint válido', {
+          error: err instanceof Error ? err.message : String(err),
+          closing_text_preview: closingTextSanitizado.slice(0, 2000),
+        });
+      }
+      throw err;
+    }
 
     if (preview) {
       preview.result.checkpoint = content;
