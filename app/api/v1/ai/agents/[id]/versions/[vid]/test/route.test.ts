@@ -136,7 +136,7 @@ describe("POST .../versions/:vid/test — core compartilhado", () => {
     });
     expect(body.error?.message).not.toContain("AI_GATEWAY_API_KEY");
     expect(atualizacoes).toContainEqual(expect.objectContaining({
-      status: "error",
+      status: "failed",
       error_code: "preview_failed",
     }));
   });

@@ -129,7 +129,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     await admin
       .from("ai_agent_runs")
       .update({
-        status: "ok",
+        status: "completed",
         completed_at: new Date().toISOString(),
         tool_calls: JSON.parse(JSON.stringify(result.proposals)),
       })
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     await admin
       .from("ai_agent_runs")
       .update({
-        status: "error",
+        status: "failed",
         completed_at: new Date().toISOString(),
         error_code: "preview_failed",
       })
