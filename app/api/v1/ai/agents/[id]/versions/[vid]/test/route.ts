@@ -21,6 +21,7 @@ import { type NextRequest } from "next/server";
 
 import { ok, fail } from "@/lib/api/wrappers";
 import { audit } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import { requireRole } from "@/lib/auth/require-role";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { testRunSchema } from "@/lib/ai/agents/validation";
@@ -135,7 +136,20 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       })
       .eq("organization_id", activeOrg.orgId)
       .eq("id", runRow.id);
-  } catch {
+  } catch (err) {
+    // O motivo real nunca chegava a lugar nenhum: nem console, nem Sentry (pode
+    // estar desligado num self-host), nem coluna do banco — só o código genérico
+    // "preview_failed", que não distingue "credencial inválida" de "modelo não
+    // devolveu o checkpoint no formato esperado". A mensagem de erro (nunca o
+    // texto da conversa, que pode ter PII) é segura de logar — quem lança em
+    // `inbound-turn.ts` já garante isso.
+    logger.error("ai_agent.test_failed", {
+      requestId,
+      agentId: id,
+      versionId: vid,
+      runId: runRow.id,
+      error: err instanceof Error ? err.message : String(err),
+    });
     await admin
       .from("ai_agent_runs")
       .update({
