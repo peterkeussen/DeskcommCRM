@@ -125,6 +125,12 @@ beforeAll(() => {
             values (v_org, v_conv, v_sess, v_contact, 'text', 'inbound', 'rls invariant probe');
         end if;
 
+        -- 0240: o resumo para quem assume é texto da conversa de uma pessoa.
+        if not exists (select 1 from public.conversation_ai_summaries where organization_id = v_org) then
+          insert into public.conversation_ai_summaries (organization_id, conversation_id, body, gatilho)
+            values (v_org, v_conv, 'RLS invariant private summary', 'manual');
+        end if;
+
         -- 0227: sugestões contêm texto privado da conversa. Os dois tenants
         -- recebem uma linha real, com todos os FKs e a fronteira canônica.
         -- A prova abaixo usa JWT authenticated; não é só inspeção de policy.
@@ -327,6 +333,10 @@ export const TABLES = [
   // aceitou o risco do segundo aparelho vinculado: vazar entre organizacoes
   // diria a uma empresa quem, na outra, ligou a feature e quando.
   "org_voice_calls",
+  // migration 0240 — o resumo da conversa para quem assume. Leitura exige `agent`
+  // (o usuário semeado aqui É `agent`, então o controle positivo mede o acerto,
+  // não um acaso) e não há policy de escrita: quem grava é o servidor.
+  "conversation_ai_summaries",
   // ⚠️ `webhook_lead_captures` (migration 0174) NÃO entra nesta lista, e a
   // ausência é deliberada: a policy dela exige `manager`, e o usuário semeado
   // aqui é `agent` — o controle positivo falharia por ACERTO, e a "correção"
