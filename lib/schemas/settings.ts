@@ -253,6 +253,8 @@ export const copilotSettingsWriteSchema = z
     resumo_ao_assumir: z.boolean(),
     /** Ordenar a Fila pela prioridade que a IA deu (conversations.ai_priority). */
     prioridade_da_fila: z.boolean(),
+    /** Oferecer variações do rascunho sugerido (ai_reply_drafts.alternatives). */
+    sugestoes_multiplas: z.boolean(),
   })
   .partial()
   .strict()
@@ -264,13 +266,19 @@ export type CopilotSettingsWrite = z.infer<typeof copilotSettingsWriteSchema>;
  * conversa (o resumo) ou muda a ordem da fila que o time conhece (a prioridade).
  * Quem liga é quem decide pagar e mudar.
  */
-export const COPILOT_PADRAO = { mascarar_pii: true, resumo_ao_assumir: false, prioridade_da_fila: false } as const;
+export const COPILOT_PADRAO = {
+  mascarar_pii: true,
+  resumo_ao_assumir: false,
+  prioridade_da_fila: false,
+  sugestoes_multiplas: false,
+} as const;
 
 export const copilotSettingsSchema = z
   .object({
     mascarar_pii: z.boolean().catch(COPILOT_PADRAO.mascarar_pii),
     resumo_ao_assumir: z.boolean().catch(COPILOT_PADRAO.resumo_ao_assumir),
     prioridade_da_fila: z.boolean().catch(COPILOT_PADRAO.prioridade_da_fila),
+    sugestoes_multiplas: z.boolean().catch(COPILOT_PADRAO.sugestoes_multiplas),
   })
   .catch({ ...COPILOT_PADRAO });
 export type CopilotSettings = z.infer<typeof copilotSettingsSchema>;

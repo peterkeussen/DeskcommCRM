@@ -53,6 +53,7 @@ export type Database = {
           edited_body: string | null;
           approved_body: string | null;
           proposals: Json;
+          alternatives: Json;
           trace: Json;
           feedback: Json | null;
           approved_by: string | null;
@@ -82,6 +83,7 @@ export type Database = {
           edited_body?: string | null;
           approved_body?: string | null;
           proposals?: Json;
+          alternatives?: Json;
           trace?: Json;
           feedback?: Json | null;
           approved_by?: string | null;
@@ -111,6 +113,7 @@ export type Database = {
           edited_body?: string | null;
           approved_body?: string | null;
           proposals?: Json;
+          alternatives?: Json;
           trace?: Json;
           feedback?: Json | null;
           approved_by?: string | null;

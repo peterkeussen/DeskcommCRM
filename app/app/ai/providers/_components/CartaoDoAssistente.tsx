@@ -45,6 +45,7 @@ interface Configuracao {
   mascarar_pii: boolean;
   resumo_ao_assumir: boolean;
   prioridade_da_fila: boolean;
+  sugestoes_multiplas: boolean;
 }
 
 type Chave = keyof Configuracao;
@@ -66,6 +67,14 @@ const INTERRUPTORES: Array<{ chave: Chave; rotulo: string; explicacao: string; l
       "A IA já mede o clima de cada mensagem recebida. Com isto ligado, cliente com prazo, problema em andamento ou insatisfeito sobe na Fila e ganha o selo Urgente — para o time inteiro.",
     ligado: "A Fila agora mostra os urgentes primeiro.",
     desligado: "A Fila voltou à ordem por tempo de espera.",
+  },
+  {
+    chave: "sugestoes_multiplas",
+    rotulo: "Oferecer outras versões da resposta sugerida",
+    explicacao:
+      "Além do rascunho do agente, o atendente escolhe entre uma versão mais direta e outra mais acolhedora. As versões mantêm os mesmos fatos: se uma trouxer preço, prazo ou link que o rascunho não tem, ela é descartada. Uma chamada de IA a mais por sugestão.",
+    ligado: "As sugestões de resposta agora chegam com outras versões.",
+    desligado: "As sugestões voltam a ter uma versão só.",
   },
   {
     chave: "mascarar_pii",

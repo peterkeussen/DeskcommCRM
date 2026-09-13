@@ -24226,3 +24226,31 @@ end $$;
 
 create index if not exists conversations_fila_por_prioridade_idx
   on public.conversations (organization_id, ai_priority_rank, last_inbound_at, id);
+
+-- ---- alternativas de resposta do atendente (migration 0241) ----
+-- `ai_reply_drafts.alternatives` (array jsonb, até 3) e `fn_reply_redact`
+-- recriada para zerar as variações na anonimização. Racional na migration.
+-- Idempotente.
+alter table public.ai_reply_drafts
+  add column if not exists alternatives jsonb not null default '[]'::jsonb;
+
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+     where conname = 'ai_reply_drafts_alternatives_array'
+       and conrelid = 'public.ai_reply_drafts'::regclass
+  ) then
+    alter table public.ai_reply_drafts
+      add constraint ai_reply_drafts_alternatives_array
+      check (jsonb_typeof(alternatives) = 'array' and jsonb_array_length(alternatives) <= 3);
+  end if;
+end $$;
+
+create or replace function public.fn_reply_redact() returns trigger language plpgsql security definer set search_path=public as $$
+begin
+ update public.ai_reply_drafts set original_body=null,edited_body=null,approved_body=null,alternatives='[]',proposals='[]',trace='[]',feedback=null,status=case when status='sent' then status else 'stale' end,error_code='redacted',updated_at=now() where organization_id=new.organization_id and contact_id=new.id;
+ update public.job_queue set payload='{}',status=case when status in('pending','running') then 'failed' else status end,locked_by=null,locked_at=null,last_error='reply_redacted' where organization_id=new.organization_id and contact_id=new.id and kind='approved_reply';
+ return new;
+end;$$;
+revoke all on function public.fn_reply_redact() from public,anon,authenticated;

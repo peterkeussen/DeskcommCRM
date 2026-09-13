@@ -12,7 +12,7 @@
  * `GEMINI_MODEL`. Tem de existir, não depreciado, em `ai_models` (a rota do
  * binding confere o par no catálogo e recusa o que não achar).
  */
-export const PONTOS_DO_COPILOTO = ["sentiment_classify", "resumo_para_atendente"] as const;
+export const PONTOS_DO_COPILOTO = ["sentiment_classify", "resumo_para_atendente", "sugestao_alternativas"] as const;
 
 /**
  * Por que 3.5 e não 2.5: medido contra a API real em 2026-09-13, o Google já

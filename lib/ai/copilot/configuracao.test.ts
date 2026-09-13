@@ -6,7 +6,7 @@ import { copilotSettingsWriteSchema } from "@/lib/schemas/settings";
 
 import { configuracaoDoCopiloto, lerConfiguracaoDoCopiloto } from "./configuracao";
 
-const PADRAO = { mascarar_pii: true, resumo_ao_assumir: false, prioridade_da_fila: false };
+const PADRAO = { mascarar_pii: true, resumo_ao_assumir: false, prioridade_da_fila: false, sugestoes_multiplas: false };
 
 describe("configuração do assistente do atendente", () => {
   it("organização que nunca abriu a tela: máscara LIGADA, resumo e prioridade DESLIGADOS", () => {

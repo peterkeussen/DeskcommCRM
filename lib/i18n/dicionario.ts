@@ -8401,6 +8401,13 @@ export const DICIONARIO: Traducoes = {
   "Resumir a conversa quando ela passa para uma pessoa": { es: "Resumir la conversación cuando pasa a una persona" },
   "Resumo para quem assume": { es: "Resumen para quien asume" },
   "chegaram mensagens depois dele": { es: "llegaron mensajes después de él" },
+  // Assistente do atendente — outras versões da resposta
+  "Versões da resposta": { es: "Versiones de la respuesta" },
+  "Opção": { es: "Opción" },
+  "Oferecer outras versões da resposta sugerida": { es: "Ofrecer otras versiones de la respuesta sugerida" },
+  "Além do rascunho do agente, o atendente escolhe entre uma versão mais direta e outra mais acolhedora. As versões mantêm os mesmos fatos: se uma trouxer preço, prazo ou link que o rascunho não tem, ela é descartada. Uma chamada de IA a mais por sugestão.": { es: "Además del borrador del agente, quien atiende elige entre una versión más directa y otra más cálida. Las versiones mantienen los mismos hechos: si una trae precio, plazo o enlace que el borrador no tiene, se descarta. Una llamada de IA más por sugerencia." },
+  "As sugestões de resposta agora chegam com outras versões.": { es: "Las sugerencias de respuesta ahora llegan con otras versiones." },
+  "As sugestões voltam a ter uma versão só.": { es: "Las sugerencias vuelven a tener una sola versión." },
 };
 
 /**

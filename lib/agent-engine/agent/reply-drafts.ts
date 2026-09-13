@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { gerarAlternativas } from "@/lib/ai/copilot/alternativas-de-resposta";
+import { configuracaoDoCopiloto } from "@/lib/ai/copilot/configuracao";
 import type pg from "pg";
 import { z } from "zod";
 import { loadConversationAgentConfig, type PublishedAgentConfig } from "./agent-config";
@@ -116,7 +118,15 @@ export async function generateReplyDraft(
           result.impediments[0]?.code ?? null,
         ],
       );
-      return replyDraftSchema.parse(finished[0] ?? draft);
+      const pronto = replyDraftSchema.parse(finished[0] ?? draft);
+      await anexarAlternativas(pool, deps, {
+        organizationId: input.organizationId,
+        contactId: input.contactId,
+        draft: pronto,
+        ultimaMensagemDoCliente:
+          [...context.context.messages].reverse().find((m) => m.direction === "inbound")?.body ?? null,
+      });
+      return pronto;
     } catch (error) {
       await pool.query(
         "update ai_reply_drafts set status='failed',error_code='generation_failed',updated_at=now() where organization_id=$1 and id=$2 and generation_token=$3 and status='generating'",
@@ -125,4 +135,43 @@ export async function generateReplyDraft(
       throw error;
     }
   });
+}
+
+/**
+ * As outras versões da resposta (assistente do atendente), DEPOIS de o rascunho
+ * base estar pronto — nunca no lugar dele.
+ *
+ * Três portas fechadas, e cada uma devolve o rascunho base intacto: a
+ * organização não ligou "Oferecer outras versões"; o rascunho não ficou
+ * `pending` (obsoleto, falhou, vazio); a geração falhou (`gerarAlternativas`
+ * já devolve `[]`). O UPDATE é pinado na REVISÃO: se o atendente já agiu sobre
+ * o rascunho enquanto as variações eram escritas, elas não entram.
+ */
+export async function anexarAlternativas(
+  pool: pg.Pool,
+  deps: InboundTurnDeps,
+  input: {
+    organizationId: string;
+    contactId: string;
+    draft: ReplyDraft;
+    ultimaMensagemDoCliente: string | null;
+  },
+): Promise<void> {
+  const base = input.draft.original_body ?? "";
+  if (input.draft.status !== "pending" || base.trim() === "") return;
+  const { rows } = await pool.query<{ settings: unknown }>("select settings from organizations where id=$1", [
+    input.organizationId,
+  ]);
+  if (!configuracaoDoCopiloto(rows[0]?.settings).sugestoes_multiplas) return;
+  const alternativas = await gerarAlternativas(pool, deps, {
+    organizationId: input.organizationId,
+    contactId: input.contactId,
+    rascunhoBase: base,
+    ultimaMensagemDoCliente: input.ultimaMensagemDoCliente,
+  });
+  if (alternativas.length === 0) return;
+  await pool.query(
+    "update ai_reply_drafts set alternatives=$4::jsonb,updated_at=now() where organization_id=$1 and id=$2 and revision=$3 and status='pending'",
+    [input.organizationId, input.draft.id, input.draft.revision, JSON.stringify(alternativas)],
+  );
 }

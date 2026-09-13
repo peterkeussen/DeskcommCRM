@@ -14,6 +14,11 @@ type Draft = {
   original_body: string | null;
   edited_body: string | null;
   error_code: string | null;
+  /**
+   * Outras versões do rascunho (assistente do atendente, migration 0241).
+   * Opcional: resposta de antes do deploy, ainda em cache, não traz.
+   */
+  alternatives?: string[];
   proposals: Array<{ tool: string; arguments: unknown }>;
 };
 export function ReplyReviewPanel({
@@ -45,6 +50,13 @@ export function ReplyReviewPanel({
     } | null>(null);
   const draft = query.data?.data.drafts[0];
   const body = draft ? (edits[draft.id] ?? draft.edited_body ?? draft.original_body ?? "") : "";
+  // A opção 1 é SEMPRE o rascunho do agente; as outras são variações de tom com
+  // os mesmos fatos. Escolher uma só troca o texto editável — aprovar continua
+  // sendo o único envio, e o que for aprovado é o que está na caixa.
+  const opcoes =
+    draft && draft.status === "pending" && draft.original_body && (draft.alternatives?.length ?? 0) > 0
+      ? [draft.original_body, ...(draft.alternatives ?? [])]
+      : [];
   async function generate() {
     setNotice(null);
     setBusy(true);
@@ -127,6 +139,25 @@ export function ReplyReviewPanel({
               "Aprovar envia somente este texto. Não altera dados, agenda ou a autonomia do agente.",
             )}
           </p>
+          {opcoes.length > 1 && (
+            <div className="flex flex-wrap gap-1.5" role="group" aria-label={t("Versões da resposta")}>
+              {opcoes.map((texto, i) => (
+                <Button
+                  key={i}
+                  type="button"
+                  size="sm"
+                  variant={body === texto ? "default" : "outline"}
+                  aria-pressed={body === texto}
+                  className="h-7 px-2 text-xs"
+                  disabled={disabled || busy}
+                  onClick={() => setEdits({ ...edits, [draft.id]: texto })}
+                  data-testid={`opcao-de-resposta-${i + 1}`}
+                >
+                  {`${t("Opção")} ${i + 1}`}
+                </Button>
+              ))}
+            </div>
+          )}
           {body && (
             <Textarea
               aria-label={t("Resposta sugerida")}

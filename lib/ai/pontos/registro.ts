@@ -222,6 +222,19 @@ export const PONTOS_DE_IA: readonly PontoDeIa[] = [
     registraEm: "llm_calls",
   },
   {
+    id: "sugestao_alternativas",
+    rotulo: "Oferecer outras versões da resposta",
+    oQueFaz:
+      "Reescreve o rascunho sugerido em uma versão mais direta e outra mais acolhedora, com os mesmos fatos, para o atendente escolher.",
+    papel: "atender",
+    // Sem tools: devolve texto, e quem envia é a aprovação humana de sempre.
+    exige: {},
+    emissor: "lib/ai/copilot/alternativas-de-resposta.ts",
+    sintomaDeFalha:
+      "O atendente recebe só uma sugestão de resposta, sem as outras opções de tom.",
+    registraEm: "llm_calls",
+  },
+  {
     id: "bot_respond",
     rotulo: "Responder (motor antigo)",
     oQueFaz:
