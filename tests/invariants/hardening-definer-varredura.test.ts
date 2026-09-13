@@ -136,6 +136,14 @@ const AUTHENTICATED_PERMITIDO: readonly Excecao[] = [
       "negação agent/viewer/cross-org e ausência de efeito recusado.",
   },
   {
+    fn: "fn_ai_copilot_settings(uuid,jsonb)",
+    razao:
+      "PATCH app/api/v1/ai/copilot/route.ts chama com createClient da sessão; " +
+      "auth.uid() exige manager, suporte de escrita e MFA provado de quem tem fator. " +
+      "tests/invariants/copiloto-configuracao-rbac.test.ts prova manager A/B próprio, " +
+      "negação agent/viewer/cross-org/anon, aal1 com fator e ausência de efeito recusado.",
+  },
+  {
     fn: "emit_event(text,text,uuid,jsonb,jsonb,uuid)",
     razao:
       "Server Actions chamam com a sessão do usuário " +
