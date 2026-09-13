@@ -28,6 +28,7 @@ import { avaliarRespostaDeTeste } from "@/lib/ai/agents/avaliar-resposta-de-test
 import { testAgentVersion } from "@/lib/agent-engine/agent/sandbox";
 import { requestTurnDeps } from "@/lib/agent-engine/agent/request-deps";
 import { getRequestPool } from "@/lib/agent-engine/db/request-pool";
+import { mensagemDoErroDoProvedor } from "@/lib/agent-engine/edge/llm/mensagem-do-erro";
 import { traduzir } from "@/lib/i18n/dicionario";
 
 export const dynamic = "force-dynamic";
@@ -135,22 +136,22 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       })
       .eq("organization_id", activeOrg.orgId)
       .eq("id", runRow.id);
-  } catch {
+  } catch (erro) {
+    // O motivo real SAI na tela. Antes a rota descartava o erro e respondia
+    // sempre "confira modelo, credencial e materiais" — inclusive quando a
+    // chave do Google estava no plano gratuito e o provedor dizia isso por
+    // escrito. Ver `mensagem-do-erro.ts`.
+    const { codigo, mensagem } = mensagemDoErroDoProvedor(erro);
     await admin
       .from("ai_agent_runs")
       .update({
         status: "error",
         completed_at: new Date().toISOString(),
-        error_code: "preview_failed",
+        error_code: codigo === "erro_desconhecido" ? "preview_failed" : codigo,
       })
       .eq("organization_id", activeOrg.orgId)
       .eq("id", runRow.id);
-    return fail(
-      "preview_failed",
-      t("Não foi possível executar o teste. Confira modelo, credencial e materiais do agente."),
-      422,
-      { requestId },
-    );
+    return fail("preview_failed", t(mensagem), 422, { requestId, details: { motivo: codigo } });
   }
 
   void audit({

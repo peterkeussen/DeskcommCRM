@@ -8353,6 +8353,14 @@ export const DICIONARIO: Traducoes = {
   },
   "Convite reenviado.": { es: "Invitación reenviada." },
   "Convite revogado.": { es: "Invitación revocada." },
+  // Erro do provedor de IA explicado na tela (lib/agent-engine/edge/llm/mensagem-do-erro.ts)
+  "O provedor de IA recusou a chave. Confira a credencial em IA › Credenciais.": { es: "El proveedor de IA rechazó la clave. Revisa la credencial en IA › Credenciales." },
+  "O modelo escolhido não existe no provedor. Troque o modelo na versão do agente.": { es: "El modelo elegido no existe en el proveedor. Cambia el modelo en la versión del agente." },
+  "O provedor de IA recusou por limite de uso ou falta de saldo. Espere um pouco ou confira o plano da chave.": { es: "El proveedor de IA rechazó por límite de uso o falta de saldo. Espera un poco o revisa el plan de la clave." },
+  "O provedor de IA não respondeu a tempo. Tente de novo em instantes.": { es: "El proveedor de IA no respondió a tiempo. Inténtalo de nuevo en unos instantes." },
+  "O teto mensal de gasto com IA desta organização foi atingido. Ajuste em Uso de IA › Orçamento.": { es: "Se alcanzó el tope mensual de gasto en IA de esta organización. Ajusta en Uso de IA › Presupuesto." },
+  "O modelo escolhido não usa ferramentas, e o agente precisa delas. Escolha outro modelo.": { es: "El modelo elegido no usa herramientas, y el agente las necesita. Elige otro modelo." },
+  "A chave do Google está no plano gratuito, que aceita poucos pedidos por minuto — e um teste do agente faz vários. Espere um minuto e teste de novo, ou ative o faturamento da chave no Google AI Studio.": { es: "La clave de Google está en el plan gratuito, que acepta pocas solicitudes por minuto — y una prueba del agente hace varias. Espera un minuto y vuelve a probar, o activa la facturación de la clave en Google AI Studio." },
 };
 
 /**
