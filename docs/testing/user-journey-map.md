@@ -2013,3 +2013,12 @@ Casos da jornada (o atendente humano recebendo uma conversa):
 | `gemini-2.5-flash-lite` e `gemini-2.5-pro` | **"no longer available to new users"** — o catálogo semeado ainda os oferece |
 
 **NÃO COBERTO:** a prova pela tela (Playwright em ambiente fresco) destas três jornadas ainda não foi escrita; os testes acima são de unidade e de API real.
+
+### Outras versões da resposta sugerida (2026-09-13)
+
+- `[P1]` Ligar **Oferecer outras versões da resposta sugerida** → **Sugerir resposta** → aparecem **Opção 1 / 2 / 3**; escolher a 2ª troca o texto; **Aprovar e enviar** manda o texto escolhido.
+- `[P2]` Versão que inventa preço/prazo/link → não aparece (a lista vem com uma opção a menos).
+
+**Medido contra a API real (`gemini-3.5-flash`, sem raciocínio):** duas conversas (frete com CEP; reclamação de pedido errado), 2 variações aceitas em cada, ~1,3 s. A primeira medição devolveu só 1 variação no caso do frete: a versão "direta" repetia o CEP que o **cliente** tinha escrito e a checagem de fato novo a descartava — conserto: os fatos da mensagem do cliente também são permitidos.
+
+**NÃO COBERTO:** a spec Playwright desta jornada ainda não existe.
