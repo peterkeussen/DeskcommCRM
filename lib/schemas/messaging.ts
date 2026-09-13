@@ -315,6 +315,14 @@ export const listConversationsQuerySchema = z.object({
   channel_session_id: z.string().uuid().optional(),
   tag: conversationTagSchema.optional(),
   search: z.string().optional(),
+  /**
+   * `priority` põe na frente o que a IA marcou como urgente
+   * (`conversations.ai_priority_rank`), mantendo DENTRO de cada classe a ordem
+   * da aba (tempo de espera na Fila, atividade recente nas demais). Ausente =
+   * a ordem de sempre. Valor desconhecido é recusado — ordem trocada em
+   * silêncio parece a ordem certa.
+   */
+  sort: z.enum(["priority"]).optional(),
   cursor: z.string().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50),
 });

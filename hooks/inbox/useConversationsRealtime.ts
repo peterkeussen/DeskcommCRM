@@ -88,6 +88,8 @@ export interface ConversationsFilters {
   search?: string;
   channel_session_id?: string;
   tag?: string;
+  /** Urgentes primeiro (assistente do atendente) — ver `sort` no schema da rota. */
+  sort?: "priority";
 }
 
 interface ListResponse {
@@ -124,6 +126,7 @@ export function useConversationsRealtime(
       if (filters.search) qs.set("search", filters.search);
       if (filters.channel_session_id) qs.set("channel_session_id", filters.channel_session_id);
       if (filters.tag) qs.set("tag", filters.tag);
+      if (filters.sort) qs.set("sort", filters.sort);
       if (pageParam) qs.set("cursor", pageParam);
       qs.set("limit", "50");
       try {

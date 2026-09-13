@@ -2,6 +2,7 @@
  * Shapes canônicos das tabelas conversations e messages (Spec 03).
  * Espelha o schema do Postgres — atualizar aqui quando a migration mudar.
  */
+import type { Prioridade } from "@/lib/ai/copilot/prioridade";
 
 export interface Conversation {
   id: string;
@@ -48,6 +49,14 @@ export interface Conversation {
    * resposta de uma versão anterior, ainda em cache do react-query, não o tem.
    */
   comando_da_conversa?: string | null;
+  /**
+   * A classe que a IA deu à última mensagem do cliente (migration 0240, escrita
+   * por `workers/ai-sentiment-worker.ts`). `null` = nunca classificada. Opcional
+   * pelo mesmo motivo de `comando_da_conversa`: resposta antiga em cache não traz.
+   */
+  ai_priority?: Prioridade | null;
+  /** Gerada pelo banco (0 urgente, 1 neutro/sem classe, 2 positivo). Nunca escrita. */
+  ai_priority_rank?: number;
   last_handoff_at: string | null;
   created_at: string;
   updated_at: string;

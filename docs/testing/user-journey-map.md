@@ -1990,3 +1990,26 @@ Produto `7f1d0f3e`, integrado à main `ca895850`: as dez specs de organizações
 Evidência local preservada em `.superpowers/evidence/comunidade-360/final-qa-targeted-r4/` e log `.superpowers/sdd/comunidade-360/final-qa-targeted-r4.log`. A rodada inclui atualização concorrente da interface sem perder formulário, sugestão obsoleta sem confirmação antiga de sucesso e encerramento de suporte com retorno ao contexto original.
 
 Validação integral do mesmo produto: 733 arquivos unitários / 7.911 casos aprovados + 1 falha esperada; 184 arquivos de banco / 1.466 casos aprovados + 1 falha esperada e 1 ignorado, com INSTALL e UPDATE; tipos, lint (0 erros, 344 avisos) e build aprovados. `lint:channels`, validadores shell e conferência de release também passaram. Os checks remotos continuam sendo condição do merge pelo revisor da PR #613.
+
+## Assistente do atendente com Gemini — resumo e prioridade da fila (2026-09-13)
+
+Casos da jornada (o atendente humano recebendo uma conversa):
+
+- `[P1]` Ligar **Resumir a conversa quando ela passa para uma pessoa** em IA › Provedores → handoff da IA → o painel da conversa mostra "Motivo / Já feito / Pendente / Clima" sem clique.
+- `[P1]` Conversa sem resumo → **Gerar resumo** → texto aparece; chega mensagem nova → selo **Desatualizado** + **Atualizar resumo**.
+- `[P1]` Ligar **Pôr as conversas urgentes no topo da Fila** → mensagem "preciso do boleto até as 17h" → a conversa sobe na Fila com selo **Urgente**.
+- `[P2]` Chave inválida / provedor fora do ar ao gerar resumo → mensagem legível no painel + linha de erro em IA › Execuções.
+
+**Medido contra a API real do Google (chave de teste, 2026-09-13), fora do CI:**
+
+| O quê | Resultado |
+|---|---|
+| `validateGoogleKey` com chave no formato novo `AQ.…` | ok — 50 modelos, `gemini-2.5-flash` presente |
+| Resumo via `runModelCall`, com raciocínio | 10.871 ms · 354/999 tokens · 0,26 ¢ |
+| Resumo via `runModelCall`, `semRaciocinio` | **809 ms · 354/62 tokens · 0,026 ¢**, mesma estrutura de 4 linhas |
+| CPF e telefone na conversa, `mascararPii` | não chegam ao provedor nem aparecem no resumo |
+| Sentimento com o teto de 256 tokens do worker, com raciocínio | **falha em toda mensagem** (`AI_NoObjectGeneratedError`) — achado e corrigido |
+| Sentimento, `thinkingBudget: 0` | 5/5 classificações coerentes (prazo → urgente; dúvida → neutro; elogio → positivo), ~1 s |
+| `gemini-2.5-flash-lite` e `gemini-2.5-pro` | **"no longer available to new users"** — o catálogo semeado ainda os oferece |
+
+**NÃO COBERTO:** a prova pela tela (Playwright em ambiente fresco) destas três jornadas ainda não foi escrita; os testes acima são de unidade e de API real.

@@ -54,6 +54,13 @@ interface Props {
    * afirme nada".
    */
   automaticoDaOrg?: boolean;
+  /**
+   * A organização ligou "Prioridade da fila"? Vem por prop pelo mesmo motivo de
+   * `automaticoDaOrg`. Desligado = nenhum selo, mesmo que a coluna tenha valor:
+   * o worker grava sempre, e mostrar o selo sem o recurso ligado anunciaria uma
+   * ordem que a fila não está seguindo.
+   */
+  mostrarPrioridade?: boolean;
 }
 
 /**
@@ -119,6 +126,7 @@ export function ConversationListItem({
   mostrarAtendente,
   mostrarAutomatico = true,
   automaticoDaOrg,
+  mostrarPrioridade = false,
 }: Props) {
   const localeDaData = useLocaleDeData();
   const t = useT();
@@ -161,7 +169,12 @@ export function ConversationListItem({
   const canal = conversation.channel_sessions ?? null;
   const rotuloCanal = canal?.phone_number ?? canal?.display_name ?? null;
 
+  // Só a ponta da régua ganha selo. "Neutro" em toda linha seria ruído, e
+  // "Positivo" não muda o que o atendente faz agora.
+  const urgente = mostrarPrioridade === true && conversation.ai_priority === "urgente";
+
   const temSelos =
+    urgente ||
     visibleTags.length > 0 ||
     (mostrarAtendente && comando.quem === "humano") ||
     (mostrarCanal && rotuloCanal != null) ||
@@ -257,6 +270,16 @@ export function ConversationListItem({
 
         {temSelos && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {urgente && (
+              <Badge
+                variant="destructive"
+                className="h-4 px-1.5 text-[10px]"
+                title={t("A IA marcou esta conversa como urgente ou com cliente insatisfeito")}
+                data-testid="selo-urgente"
+              >
+                {t("Urgente")}
+              </Badge>
+            )}
             {visibleTags.map((t) => (
               <Badge key={t} variant="secondary" className="h-4 px-1.5 text-[10px]">
                 {t}

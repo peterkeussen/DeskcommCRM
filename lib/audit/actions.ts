@@ -191,6 +191,9 @@ export const AUDIT_ACTIONS = [
   // prioridade, máscara de dado pessoal). Muda o que sai para o provedor de IA
   // e quanto se gasta por conversa.
   "ai.copilot_settings_changed",
+  // Resumo da conversa gerado pelo botão do atendente (o do handoff é do
+  // sistema e fica em `llm_calls` + `conversation_ai_summaries.gatilho`).
+  "ai.summary_generated",
   // Ligar/desligar uma das duas verificações que consultam modelo. Auditável
   // porque muda o que o sistema confere antes de falar com o cliente — e porque
   // custa dinheiro por mensagem.

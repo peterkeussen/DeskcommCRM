@@ -125,6 +125,7 @@ const ACTION_MIN_ROLE: Record<string, Role> = {
   "lgpd.execute_redact": "admin",
   "audit.view": "manager",
   "ai.automatico.view": "agent",
+  "ai.copilot.view": "agent",
   "ai.inbox.view": "agent",
   "inbox.notes.view": "agent",
   "message-templates.view": "agent",

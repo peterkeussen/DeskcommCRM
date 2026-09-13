@@ -27,6 +27,14 @@ describe("costCents — Gemini", () => {
     expect(costCents("gemini-2.5-flash", usage)).toBeCloseTo(3);
   });
 
+  it("cobra o 3.5 Flash pela tarifa dele ($1,50 + $9,00 por milhão)", () => {
+    expect(costCents("gemini-3.5-flash", umMilhao)).toBeCloseTo(1050);
+  });
+
+  it("o 3.5 Flash-Lite, sem linha própria, é NULL — nunca o preço do Flash", () => {
+    expect(costCents("gemini-3.5-flash-lite", umMilhao)).toBeNull();
+  });
+
   it("modelo sem preço continua NULL, nunca zero", () => {
     expect(costCents("gemini-9-ultra", umMilhao)).toBeNull();
   });

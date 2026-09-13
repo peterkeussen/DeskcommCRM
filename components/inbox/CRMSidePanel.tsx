@@ -20,6 +20,7 @@ import type { ConversationWithContact } from "@/hooks/inbox/useConversationsReal
 import { activityLabel, actorLabel, actorShape } from "@/lib/leads/activity-vocabulary";
 import { ConversationTagsEditor } from "./ConversationTagsEditor";
 import { ContactTagsEditor } from "./ContactTagsEditor";
+import { ResumoDaConversa } from "./copilot/ResumoDaConversa";
 import { useDefaultPipeline } from "@/hooks/pipelines/useDefaultPipeline";
 import { NewLeadDialog } from "@/components/kanban/NewLeadDialog";
 import { CustomFieldsEditor, type CustomFieldDef } from "@/components/contacts/CustomFieldsEditor";
@@ -547,6 +548,13 @@ export function CRMSidePanel({ conversation }: Props) {
 
   return (
     <aside className="flex h-full flex-col gap-4 overflow-y-auto border-l border-border bg-background p-4">
+      <ResumoDaConversa
+        conversationId={conversation.id}
+        organizationId={conversation.organization_id}
+        ultimaMensagemEm={conversation.last_message_at ?? null}
+        somenteLeitura={readonly}
+      />
+
       <section>
         <h3 className="text-xs font-semibold text-text">
           {t("Contato")}

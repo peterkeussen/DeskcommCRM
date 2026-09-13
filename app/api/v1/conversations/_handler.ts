@@ -87,7 +87,7 @@ const SELECT_COLS = `
   unread_count_for_assignee, is_group, group_chat_id, tags, metadata,
   snooze_until, created_at, updated_at,
   bot_silenced_until, last_handoff_at,
-  comando_da_conversa,
+  comando_da_conversa, ai_priority, ai_priority_rank,
   contacts:contact_id (id, display_name, name, phone_number, is_anonymized, tags, is_blocked, avatar_storage_path, force_human),
   channel_sessions:channel_session_id (phone_number, display_name, provider)
 `;
@@ -95,6 +95,33 @@ const SELECT_COLS = `
 interface CursorPayload {
   sort: string | null;
   id: string;
+  /** Só na ordenação por prioridade: o `ai_priority_rank` da última linha. */
+  rank?: number;
+}
+
+/**
+ * O filtro de "depois do cursor" na ordenação por prioridade, na gramática do
+ * `or=` do PostgREST. A ordem é `ai_priority_rank asc` (sempre — urgente
+ * primeiro em qualquer aba), depois a coluna da aba, depois `id`.
+ *
+ * "Depois" é: classe maior; OU mesma classe e (coluna depois; OU mesma coluna
+ * e id depois; OU coluna nula). O ramo do nulo existe porque a coluna ordena
+ * `nulls last`: dentro da mesma classe, as linhas sem data vêm DEPOIS de todas
+ * as com data, e uma comparação `gt`/`lt` com nulo é nula — sem o ramo elas
+ * nunca apareceriam na página seguinte.
+ *
+ * Pura e exportada: o defeito possível é de SINTAXE e de lógica de ordem, e as
+ * duas se verificam sem subir banco.
+ */
+export function filtroDepoisDoCursorPorPrioridade(
+  sortCol: string,
+  op: "gt" | "lt",
+  c: { sort: string | null; id: string; rank: number },
+): string {
+  const mesmaClasse = c.sort
+    ? `and(ai_priority_rank.eq.${c.rank},or(${sortCol}.${op}.${c.sort},and(${sortCol}.eq.${c.sort},id.${op}.${c.id}),${sortCol}.is.null))`
+    : `and(ai_priority_rank.eq.${c.rank},${sortCol}.is.null,id.${op}.${c.id})`;
+  return `ai_priority_rank.gt.${c.rank},${mesmaClasse}`;
 }
 
 function encodeCursor(p: CursorPayload): string {
@@ -108,7 +135,11 @@ function decodeCursor(raw: string): CursorPayload | null {
     // `last_message_at` é o nome legado do campo de ordenação (cursores em voo
     // durante deploy); `sort` é o genérico atual (default OU fila).
     const sort = parsed.sort ?? parsed.last_message_at ?? null;
-    return { sort, id: parsed.id };
+    return {
+      sort,
+      id: parsed.id,
+      ...(Number.isInteger(parsed.rank) ? { rank: parsed.rank } : {}),
+    };
   } catch {
     return null;
   }
@@ -161,10 +192,16 @@ export async function listConversationsHandler(
   const sortCol = isQueue ? "last_inbound_at" : "last_message_at";
   const asc = isQueue;
 
+  const porPrioridade = q.sort === "priority";
+
   let query = supabase
     .from("conversations")
     .select(SELECT_COLS)
-    .eq("organization_id", ctx.organization_id)
+    .eq("organization_id", ctx.organization_id);
+  // Prioridade PRIMEIRO, e a ordem da aba DENTRO de cada classe: a Fila
+  // continua sendo "quem espera há mais tempo", só que entre os urgentes antes.
+  if (porPrioridade) query = query.order("ai_priority_rank", { ascending: true });
+  query = query
     .order(sortCol, { ascending: asc, nullsFirst: false })
     .order("id", { ascending: asc })
     .limit(q.limit + 1);
@@ -324,7 +361,20 @@ export async function listConversationsHandler(
       );
     }
     const op = asc ? "gt" : "lt";
-    if (c.sort) {
+    if (porPrioridade) {
+      if (c.rank === undefined) {
+        // Cursor de outra ordenação reaproveitado: paginar com ele pularia ou
+        // repetiria linhas. Recusar é melhor que devolver página errada.
+        throw new ApiError(
+          400,
+          "invalid_cursor",
+          undefined,
+          ctx.requestId,
+          traduzir("Cursor inválido.", ctx.idioma ?? "pt-BR"),
+        );
+      }
+      query = query.or(filtroDepoisDoCursorPorPrioridade(sortCol, op, { sort: c.sort, id: c.id, rank: c.rank }));
+    } else if (c.sort) {
       query = query.or(
         `${sortCol}.${op}.${c.sort},and(${sortCol}.eq.${c.sort},id.${op}.${c.id})`,
       );
@@ -346,7 +396,11 @@ export async function listConversationsHandler(
   const last = page[page.length - 1];
   const cursor =
     hasMore && last
-      ? encodeCursor({ sort: (last[sortCol] as string | null) ?? null, id: last.id })
+      ? encodeCursor({
+          sort: (last[sortCol] as string | null) ?? null,
+          id: last.id,
+          ...(porPrioridade ? { rank: (last as { ai_priority_rank?: number }).ai_priority_rank ?? 1 } : {}),
+        })
       : null;
 
   return { conversations: page, cursor, has_more: hasMore };

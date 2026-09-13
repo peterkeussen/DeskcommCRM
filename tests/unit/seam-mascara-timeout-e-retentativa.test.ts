@@ -176,3 +176,59 @@ describe("timeoutMs e maxRetries", () => {
     expect(normalizarErro(abort).error_code).toBe("provedor_indisponivel");
   });
 });
+
+describe("semRaciocinio e a chave no formato novo do Google", () => {
+  it("modelo Gemini Flash recebe orçamento de raciocínio zero; o texto não muda", async () => {
+    let opcoes: unknown;
+    const { pool } = poolFalso();
+    await runModelCall(
+      pool,
+      { ...cfg, geminiApiKey: "AIza-x" },
+      {
+        tenantId: ORG,
+        purpose: "resumo_para_atendente",
+        llmOverride: { provider: "google" },
+        model: "gemini-2.5-flash",
+        messages: [{ role: "user", content: "oi" }],
+        semRaciocinio: true,
+      },
+      {
+        registry: registry(async (o) => {
+          opcoes = (o as { providerOptions?: unknown }).providerOptions;
+          return respostaOk;
+        }),
+      },
+    );
+    expect(opcoes).toMatchObject({ google: { thinkingConfig: { thinkingBudget: 0 } } });
+  });
+
+  it("sem a opção, nenhuma configuração de raciocínio sai", async () => {
+    let opcoes: unknown = "nao-chamado";
+    const { pool } = poolFalso();
+    await runModelCall(
+      pool,
+      { ...cfg, geminiApiKey: "AIza-x" },
+      {
+        tenantId: ORG,
+        purpose: "agent_turn",
+        llmOverride: { provider: "google" },
+        model: "gemini-2.5-flash",
+        messages: [{ role: "user", content: "oi" }],
+      },
+      {
+        registry: registry(async (o) => {
+          opcoes = (o as { providerOptions?: { google?: unknown } }).providerOptions?.google;
+          return respostaOk;
+        }),
+      },
+    );
+    expect(opcoes).toBeUndefined();
+  });
+
+  it("a mensagem de erro do provedor não carrega a chave `AQ.…` para a tela", () => {
+    const chave = "AQ." + "Ab8RN6" + "x".repeat(40);
+    const { error_message } = normalizarErro(new Error(`400 API key not valid: ${chave}`));
+    expect(error_message).not.toContain(chave);
+    expect(error_message).toContain("[CHAVE]");
+  });
+});

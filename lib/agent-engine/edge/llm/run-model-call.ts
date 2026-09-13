@@ -38,6 +38,7 @@ import {
   type ChaveDeOrcamento,
 } from './orcamento';
 import { costCents } from './pricing';
+import { opcoesSemRaciocinio } from './raciocinio';
 import { createDefaultRegistry, type ProviderRegistry } from './providers';
 import { buildStablePrefix } from './stable-prefix';
 
@@ -157,6 +158,13 @@ export interface RunModelCallInput {
    * `[TELEFONE]` na mensagem que ele recebe.
    */
   mascararPii?: boolean;
+  /**
+   * Tarefa curta (classificar, resumir) que não ganha nada com o raciocínio
+   * interno do modelo — e paga por ele em latência e em tokens de saída. O seam
+   * traduz por modelo (`./raciocinio.ts`); o ponto de chamada não nomeia
+   * provedor.
+   */
+  semRaciocinio?: boolean;
 }
 
 /** Aplica a máscara ao texto de cada mensagem; partes não textuais passam intactas. */
@@ -485,6 +493,7 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
       tools: guardServiceTools(prefix.tools),
       ...(input.maxRetries === undefined ? {} : { maxRetries: input.maxRetries }),
       ...(input.timeoutMs === undefined ? {} : { abortSignal: AbortSignal.timeout(input.timeoutMs) }),
+      ...(input.semRaciocinio && opcoesSemRaciocinio(model) ? { providerOptions: opcoesSemRaciocinio(model) as never } : {}),
       stopWhen: input.maxSteps === undefined ? undefined : stepCountIs(input.maxSteps),
       temperature,
       topP,
@@ -685,6 +694,10 @@ export function redigirMensagemDoProvedor(bruto: string): string {
     // `sk-or-v1-…`, `sk-proj-…`, `sk-…`, e as do Google (`AIza…`).
     .replace(/sk-[A-Za-z0-9_-]{8,}/g, '[CHAVE]')
     .replace(/AIza[A-Za-z0-9_-]{10,}/g, '[CHAVE]')
+    // O formato NOVO de chave do Google AI Studio (`AQ.Ab8…`), que não começa
+    // com `AIza` — medido com uma chave real em 2026-09-13. Sem esta linha ela
+    // passava inteira para `llm_calls.error_message` e para a tela de Execuções.
+    .replace(/\bAQ\.[A-Za-z0-9_-]{20,}/g, '[CHAVE]')
     // O header inteiro, em qualquer caixa, com ou sem `Authorization:` na
     // frente — é assim que ele costuma aparecer ecoado num corpo de erro.
     .replace(/[Bb]earer\s+[A-Za-z0-9._-]{8,}/g, 'Bearer [CHAVE]')

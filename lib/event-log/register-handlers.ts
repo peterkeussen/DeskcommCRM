@@ -9,6 +9,7 @@ import { followupGatilhoPresencaHandler } from "@/lib/followup/gatilho-presenca.
 import { aiResponseHandler } from "@/workers/ai-response-worker.handler";
 import { aiSentimentHandler } from "@/workers/ai-sentiment-worker.handler";
 import { aiHandoffFromSentimentHandler } from "@/workers/ai-handoff-from-sentiment.handler";
+import { copilotResumoHandler } from "@/workers/copilot-resumo.handler";
 import { ragIndexerHandler } from "@/workers/rag-indexer.handler";
 import { lgpdExportHandler } from "@/workers/lgpd-export-worker.handler";
 import { lgpdRedactHandler } from "@/workers/lgpd-redact-worker.handler";
@@ -32,6 +33,9 @@ export function ensureHandlersRegistered(): void {
   registerHandler(aiResponseHandler);
   registerHandler(aiSentimentHandler);
   registerHandler(aiHandoffFromSentimentHandler);
+  // Depois do handoff: o resumo lê a conversa que acabou de passar para uma
+  // pessoa, e uma falha do provedor aqui não pode atrasar quem move a conversa.
+  registerHandler(copilotResumoHandler);
   registerHandler(ragIndexerHandler);
   registerHandler(lgpdExportHandler);
   registerHandler(lgpdRedactHandler);

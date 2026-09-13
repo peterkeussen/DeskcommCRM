@@ -415,3 +415,57 @@ describe("sentimento — dado pessoal não sai para o provedor", () => {
     expect(prompt).toContain("123.456.789-09");
   });
 });
+
+describe("sentimento → prioridade da conversa na fila", () => {
+  function adminEspiao() {
+    const banco = montarBanco({ sessaoDaConversa: SESSAO_TECNICA });
+    banco.messages[0]!["created_at"] = "2026-09-13T10:00:00.000Z";
+    const base = fazerAdmin(banco, []);
+    const escritas: Array<{ tabela: string; op: string; args: unknown[] }> = [];
+    const from = (tabela: string) => {
+      const real = base.from(tabela);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const proxy: any = new Proxy(real, {
+        get: (alvo, prop: string) => {
+          const v = (alvo as Record<string, unknown>)[prop];
+          if (typeof v !== "function" || prop === "then") return v;
+          return (...args: unknown[]) => {
+            escritas.push({ tabela, op: prop, args });
+            const saida = (v as (...a: unknown[]) => unknown)(...args);
+            return saida === real ? proxy : saida;
+          };
+        },
+      });
+      return proxy;
+    };
+    vi.mocked(createAdminClient).mockReturnValue({ ...base, from } as unknown as ReturnType<typeof createAdminClient>);
+    return escritas;
+  }
+
+  it("educado mas com prazo vira URGENTE, mesmo com nota neutra", async () => {
+    vi.mocked(generateObject).mockResolvedValue({
+      object: { sentiment_score: 0.5, reasoning_short: "prazo", urgente: true },
+      usage: { inputTokens: 1, outputTokens: 1 },
+    } as unknown as Awaited<ReturnType<typeof generateObject>>);
+    const escritas = adminEspiao();
+    const r = await processSentiment(evento);
+    expect(r.prioridade).toBe("urgente");
+
+    const update = escritas.find((e) => e.tabela === "conversations" && e.op === "update");
+    expect(update?.args[0]).toMatchObject({ ai_priority: "urgente", ai_priority_message_id: MSG });
+    // A escrita é escopada pela organização e recusada se já chegou mensagem depois.
+    const filtros = escritas.filter((e) => e.tabela === "conversations").map((e) => [e.op, ...e.args]);
+    expect(filtros).toContainEqual(["eq", "organization_id", ORG]);
+    expect(filtros).toContainEqual(["lte", "last_inbound_at", "2026-09-13T10:00:00.000Z"]);
+  });
+
+  it("modelo que omite `urgente` não quebra: decide só pela nota", async () => {
+    vi.mocked(generateObject).mockResolvedValue({
+      object: { sentiment_score: 0.9, reasoning_short: "elogio", urgente: false },
+      usage: { inputTokens: 1, outputTokens: 1 },
+    } as unknown as Awaited<ReturnType<typeof generateObject>>);
+    adminEspiao();
+    const r = await processSentiment(evento);
+    expect(r.prioridade).toBe("positivo");
+  });
+});

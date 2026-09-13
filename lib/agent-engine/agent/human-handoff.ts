@@ -186,6 +186,39 @@ export async function performHumanHandoff(
     ],
   );
 
+  // (d2) O PEDIDO DE RESUMO para quem vai assumir. Este caminho não emitia
+  // evento nenhum na passagem (o orquestrador do CRM emite
+  // `ai.handoff_triggered`; este não), então o resumo do assistente do atendente
+  // não tinha como saber que a conversa mudou de mãos. É um COMANDO com
+  // consumidor único (`workers/copilot-resumo.handler.ts`), que confere se a
+  // organização ligou o recurso — emitir sempre custa uma linha, e decidir aqui
+  // duplicaria a leitura da configuração.
+  //
+  // Fire-and-forget pelo mesmo motivo da timeline abaixo: o resumo não pode
+  // derrubar a passagem que ele descreve.
+  try {
+    const evento = {
+      p_event_type: 'copilot.summary_requested',
+      p_entity_kind: 'conversation',
+      p_entity_id: ids.conversationId,
+      p_payload: { conversation_id: ids.conversationId },
+      p_metadata: { source: 'human-handoff' },
+      p_organization_id: ids.tenantId,
+    };
+    await db.query(`select public.emit_event($1, $2, $3, $4::jsonb, $5::jsonb, $6)`, [
+      evento.p_event_type,
+      evento.p_entity_kind,
+      evento.p_entity_id,
+      JSON.stringify(evento.p_payload),
+      JSON.stringify(evento.p_metadata),
+      evento.p_organization_id,
+    ]);
+  } catch (err) {
+    opts.log.warn('handoff: pedido de resumo não foi emitido', {
+      error: err instanceof Error ? err.message.slice(0, 200) : 'erro desconhecido',
+    });
+  }
+
   // (e) A IDA na linha do tempo do NEGÓCIO. `triggerHandoff` (o caminho do CRM)
   // já gravava `handoff_triggered`; este caminho — o do harness e o do "Assumir
   // eu" dos casos — não gravava nada. Metade das passagens era invisível no

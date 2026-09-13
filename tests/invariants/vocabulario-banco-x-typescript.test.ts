@@ -270,6 +270,22 @@ const PARES: Array<{
     arquivo: "lib/schemas/team.ts",
     simbolo: "ROLES",
   },
+  {
+    tabela: "conversations",
+    coluna: "ai_priority",
+    // lib/ai/copilot/prioridade.ts → PRIORIDADES (tupla `as const`). A ordem da
+    // tupla é a ordem da fila, e o `ai_priority_rank` gerado da migration 0240
+    // a espelha; nasce com o par no mesmo commit da migration.
+    arquivo: "lib/ai/copilot/prioridade.ts",
+    simbolo: "PRIORIDADES",
+  },
+  {
+    tabela: "conversation_ai_summaries",
+    coluna: "gatilho",
+    // lib/ai/copilot/resumir-conversa.ts → GATILHOS_DO_RESUMO (migration 0240).
+    arquivo: "lib/ai/copilot/resumir-conversa.ts",
+    simbolo: "GATILHOS_DO_RESUMO",
+  },
 ];
 
 /** Tira um nível de parênteses externos, se ele envolver a expressão inteira. */

@@ -359,6 +359,18 @@ export const PONTOS_DE_IA: readonly PontoDeIa[] = [
     registraEm: "llm_calls",
   },
   {
+    id: "resumo_para_atendente",
+    rotulo: "Resumir a conversa para quem assume",
+    oQueFaz:
+      "Escreve, em poucas linhas, o motivo do contato, o que já foi feito, o que falta e o clima — para o atendente humano não começar do zero.",
+    papel: "lembrar",
+    exige: {},
+    emissor: "lib/ai/copilot/resumir-conversa.ts",
+    sintomaDeFalha:
+      "O atendente assume a conversa sem resumo e precisa ler o histórico inteiro enquanto o cliente espera.",
+    registraEm: "llm_calls",
+  },
+  {
     id: "embedding_indexar",
     rotulo: "Indexar o seu material",
     oQueFaz:

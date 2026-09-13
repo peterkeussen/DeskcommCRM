@@ -3393,8 +3393,51 @@ export type Database = {
           },
         ]
       }
+      conversation_ai_summaries: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          created_by: string | null
+          gatilho: string
+          id: string
+          last_message_id: string | null
+          llm_call_id: string | null
+          model: string | null
+          organization_id: string
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          created_by?: string | null
+          gatilho: string
+          id?: string
+          last_message_id?: string | null
+          llm_call_id?: string | null
+          model?: string | null
+          organization_id: string
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          created_by?: string | null
+          gatilho?: string
+          id?: string
+          last_message_id?: string | null
+          llm_call_id?: string | null
+          model?: string | null
+          organization_id?: string
+        }
+        Relationships: []
+      }
       conversations: {
         Row: {
+          ai_priority: string | null
+          ai_priority_at: string | null
+          ai_priority_message_id: string | null
+          ai_priority_rank: number
           reply_context_revision: number
           active_agent_set_at: string | null
           active_ai_agent_id: string | null
@@ -3438,6 +3481,10 @@ export type Database = {
           usable_for_rag_marked_by: string | null
         }
         Insert: {
+          ai_priority?: string | null
+          ai_priority_at?: string | null
+          ai_priority_message_id?: string | null
+          ai_priority_rank?: never
           reply_context_revision?: number
           active_agent_set_at?: string | null
           active_ai_agent_id?: string | null
@@ -3481,6 +3528,10 @@ export type Database = {
           usable_for_rag_marked_by?: string | null
         }
         Update: {
+          ai_priority?: string | null
+          ai_priority_at?: string | null
+          ai_priority_message_id?: string | null
+          ai_priority_rank?: never
           reply_context_revision?: number
           active_agent_set_at?: string | null
           active_ai_agent_id?: string | null

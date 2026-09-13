@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo } from "react";
 import { useT } from "@/hooks/i18n/useT";
+import { useConfiguracaoDoCopiloto } from "@/hooks/ai/useConfiguracaoDoCopiloto";
 import type { InfiniteData, UseInfiniteQueryResult } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -48,6 +49,9 @@ export function ConversationList({
   // `?? []` e não `undefined`: enquanto a lista de canais carrega, o certo é
   // NÃO mostrar. Mostrar e sumir depois é pior que aparecer um instante tarde.
   const canais = useChannelSessions().data ?? [];
+  // Uma leitura para a lista inteira — o selo de prioridade só aparece com o
+  // recurso ligado, e decidir por linha seria 50 assinaturas da mesma pergunta.
+  const copiloto = useConfiguracaoDoCopiloto();
   const maisDeUmCanal = canais.length > 1;
 
   // Fila (G5-03): a lista já vem ordenada por tempo de espera (server), então a
@@ -156,6 +160,7 @@ export function ConversationList({
             mostrarAtendente={mostrarAtendente}
             mostrarAutomatico={mostrarAutomatico}
             automaticoDaOrg={automaticoDaOrg.data}
+            mostrarPrioridade={copiloto.data?.prioridade_da_fila === true}
           />
         ))}
         {q.hasNextPage && (

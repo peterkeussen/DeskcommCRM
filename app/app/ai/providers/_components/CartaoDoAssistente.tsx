@@ -8,9 +8,10 @@
  * que ele responde é a mesma do painel: qual IA faz isto, com qual chave, e o
  * que sai para ela. Tela nova seria mais uma porta para a mesma configuração.
  *
- * Dois controles:
- *  - a MÁSCARA de dado pessoal, que qualquer `manager` liga e desliga (é a
- *    mesma permissão da rota `/api/v1/ai/copilot`);
+ * Dois tipos de controle:
+ *  - os INTERRUPTORES (resumo ao assumir, prioridade da fila, máscara de dado
+ *    pessoal), que qualquer `manager` liga e desliga — a mesma permissão da
+ *    rota `/api/v1/ai/copilot`;
  *  - o ATALHO "Usar Gemini", que grava o binding de cada ponto do assistente
  *    pela rota de sempre (`PUT /api/v1/ai/providers`, `admin`). Ele não inventa
  *    caminho de escrita: é o mesmo PUT que o cartão de cada ponto faz, repetido.
@@ -42,7 +43,39 @@ interface DadosDoPainel {
 
 interface Configuracao {
   mascarar_pii: boolean;
+  resumo_ao_assumir: boolean;
+  prioridade_da_fila: boolean;
 }
+
+type Chave = keyof Configuracao;
+
+/** Cada interruptor diz o que muda e quanto custa — é o que a pessoa decide. */
+const INTERRUPTORES: Array<{ chave: Chave; rotulo: string; explicacao: string; ligado: string; desligado: string }> = [
+  {
+    chave: "resumo_ao_assumir",
+    rotulo: "Resumir a conversa quando ela passa para uma pessoa",
+    explicacao:
+      "Quem assume vê no topo da conversa o motivo, o que já foi feito, o que falta e o clima. Uma chamada de IA por passagem; o botão \"Gerar resumo\" funciona com isto desligado.",
+    ligado: "Conversas passadas para uma pessoa chegam com resumo.",
+    desligado: "O resumo automático foi desligado. O botão continua disponível.",
+  },
+  {
+    chave: "prioridade_da_fila",
+    rotulo: "Pôr as conversas urgentes no topo da Fila",
+    explicacao:
+      "A IA já mede o clima de cada mensagem recebida. Com isto ligado, cliente com prazo, problema em andamento ou insatisfeito sobe na Fila e ganha o selo Urgente — para o time inteiro.",
+    ligado: "A Fila agora mostra os urgentes primeiro.",
+    desligado: "A Fila voltou à ordem por tempo de espera.",
+  },
+  {
+    chave: "mascarar_pii",
+    rotulo: "Mascarar dados pessoais antes de enviar à IA",
+    explicacao:
+      "CPF, e-mail, telefone e CEP são trocados por marcadores nas leituras que a IA faz da conversa. O que o agente escreve para o cliente não é afetado.",
+    ligado: "Dados pessoais serão mascarados antes de ir para a IA.",
+    desligado: "Os textos vão para a IA como chegaram.",
+  },
+];
 
 export function CartaoDoAssistente({
   dados,
@@ -54,7 +87,7 @@ export function CartaoDoAssistente({
   const t = useT();
   const [config, setConfig] = useState<Configuracao | null>(null);
   const [erro, setErro] = useState<string | null>(null);
-  const [salvandoMascara, setSalvandoMascara] = useState(false);
+  const [salvando, setSalvando] = useState<Chave | null>(null);
   const [aplicandoGemini, setAplicandoGemini] = useState(false);
 
   const carregar = useCallback(async () => {
@@ -91,13 +124,13 @@ export function CartaoDoAssistente({
         p.efetivo.modelId === MODELO_GEMINI_SUGERIDO.modelId,
     );
 
-  async function alternarMascara(valor: boolean) {
-    setSalvandoMascara(true);
+  async function alternar(chave: Chave, valor: boolean) {
+    setSalvando(chave);
     try {
       const res = await fetch("/api/v1/ai/copilot", {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mascarar_pii: valor }),
+        body: JSON.stringify({ [chave]: valor }),
       });
       const json = (await res.json().catch(() => null)) as
         | { data?: Configuracao; error?: { message?: string } }
@@ -107,13 +140,10 @@ export function CartaoDoAssistente({
         return;
       }
       setConfig(json.data);
-      toast.success(
-        json.data.mascarar_pii
-          ? t("Dados pessoais serão mascarados antes de ir para a IA.")
-          : t("Os textos vão para a IA como chegaram."),
-      );
+      const item = INTERRUPTORES.find((i) => i.chave === chave)!;
+      toast.success(t(json.data[chave] ? item.ligado : item.desligado));
     } finally {
-      setSalvandoMascara(false);
+      setSalvando(null);
     }
   }
 
@@ -143,7 +173,7 @@ export function CartaoDoAssistente({
           return;
         }
       }
-      toast.success(t("O assistente do atendente agora usa o Gemini 2.5 Flash."));
+      toast.success(`${t("O assistente do atendente agora usa o")} ${MODELO_GEMINI_SUGERIDO.rotulo}.`);
       await aoSalvar();
     } finally {
       setAplicandoGemini(false);
@@ -178,7 +208,7 @@ export function CartaoDoAssistente({
           </p>
         ) : jaUsaGemini ? (
           <p className="text-sm text-muted-foreground" data-testid="assistente-ja-usa-gemini">
-            {t("Estes recursos já usam o Gemini 2.5 Flash.")}
+            {t("Estes recursos já usam o")} {MODELO_GEMINI_SUGERIDO.rotulo}.
           </p>
         ) : dados.podeEditar && modeloNoCatalogo ? (
           <Button
@@ -188,12 +218,12 @@ export function CartaoDoAssistente({
             onClick={() => void usarGemini()}
             data-testid="assistente-usar-gemini"
           >
-            {aplicandoGemini ? t("Aplicando…") : t("Usar Gemini 2.5 Flash nestes recursos")}
+            {aplicandoGemini ? t("Aplicando…") : `${t("Usar nestes recursos:")} ${MODELO_GEMINI_SUGERIDO.rotulo}`}
           </Button>
         ) : (
           <p className="text-sm text-muted-foreground">
             {dados.podeEditar
-              ? t("O Gemini 2.5 Flash não está no catálogo de modelos desta instalação.")
+              ? `${MODELO_GEMINI_SUGERIDO.rotulo}: ${t("não está no catálogo de modelos desta instalação.")}`
               : t("Só quem administra a organização troca o modelo destes recursos.")}
           </p>
         )}
@@ -208,24 +238,24 @@ export function CartaoDoAssistente({
             </Button>
           </div>
         ) : (
-          <div className="flex items-start gap-3">
-            <Switch
-              id="assistente-mascarar-pii"
-              checked={config?.mascarar_pii ?? true}
-              disabled={config === null || salvandoMascara}
-              onCheckedChange={(v) => void alternarMascara(v)}
-              data-testid="assistente-mascarar-pii"
-            />
-            <div>
-              <Label htmlFor="assistente-mascarar-pii" className="text-sm font-medium">
-                {t("Mascarar dados pessoais antes de enviar à IA")}
-              </Label>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {t(
-                  "CPF, e-mail, telefone e CEP são trocados por marcadores nas leituras que a IA faz da conversa. O que o agente escreve para o cliente não é afetado.",
-                )}
-              </p>
-            </div>
+          <div className="space-y-4">
+            {INTERRUPTORES.map((item) => (
+              <div key={item.chave} className="flex items-start gap-3">
+                <Switch
+                  id={`assistente-${item.chave}`}
+                  checked={config?.[item.chave] ?? false}
+                  disabled={config === null || salvando !== null}
+                  onCheckedChange={(v) => void alternar(item.chave, v)}
+                  data-testid={`assistente-${item.chave}`}
+                />
+                <div>
+                  <Label htmlFor={`assistente-${item.chave}`} className="text-sm font-medium">
+                    {t(item.rotulo)}
+                  </Label>
+                  <p className="mt-1 text-xs text-muted-foreground">{t(item.explicacao)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

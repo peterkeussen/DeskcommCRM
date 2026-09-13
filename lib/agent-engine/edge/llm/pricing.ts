@@ -33,7 +33,18 @@ const USD_PER_MTOK: Record<string, { input: number; output: number; cacheRead: n
   'gemini-2.5-flash-lite': { input: 0.1, output: 0.4, cacheRead: 0.01, cacheWrite1h: 0.1 },
   'gemini-2.5-flash': { input: 0.3, output: 2.5, cacheRead: 0.03, cacheWrite1h: 0.3 },
   'gemini-2.5-pro': { input: 1.25, output: 10, cacheRead: 0.125, cacheWrite1h: 1.25 },
+  // 3.5 Flash — mesma página, conferida 2026-09-13, tier padrão. A saída
+  // INCLUI tokens de raciocínio (a página diz isso por escrito).
+  'gemini-3.5-flash': { input: 1.5, output: 9, cacheRead: 0.15, cacheWrite1h: 1.5 },
 };
+
+/**
+ * Variantes que o prefixo de um modelo alcançaria e que têm OUTRO preço, sem
+ * linha própria aqui. `gemini-3.5-flash-lite` existe e custa menos que o
+ * `gemini-3.5-flash`; sem esta regra ele seria cobrado como o Flash. A doutrina
+ * do cabeçalho vale: preço desconhecido é NULL, nunca o preço do vizinho.
+ */
+const VARIANTE_COM_PRECO_PROPRIO = /^-lite\b/;
 
 export interface TokenUsage {
   inputTokens: number;
@@ -53,7 +64,9 @@ export function costCents(model: string, usage: TokenUsage): number | null {
   // prefixo `google/` é tirado: estender aos outros mudaria o custo (e o
   // orçamento) de chamadas que hoje já gravam, fora do escopo desta tabela.
   const id = model.startsWith('google/') ? model.slice('google/'.length) : model;
-  const priceKey = Object.keys(USD_PER_MTOK).find((prefix) => id.startsWith(prefix));
+  const priceKey = Object.keys(USD_PER_MTOK).find(
+    (prefix) => id.startsWith(prefix) && !VARIANTE_COM_PRECO_PROPRIO.test(id.slice(prefix.length)),
+  );
   if (priceKey === undefined) {
     return null;
   }

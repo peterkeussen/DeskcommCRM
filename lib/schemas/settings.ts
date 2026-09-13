@@ -249,17 +249,28 @@ export const agendaSettingsSchema = agendaSettingsWriteSchema.catch({confirmatio
 export const copilotSettingsWriteSchema = z
   .object({
     mascarar_pii: z.boolean(),
+    /** Resumir a conversa quando ela passa para uma pessoa (workers/copilot-resumo.handler.ts). */
+    resumo_ao_assumir: z.boolean(),
+    /** Ordenar a Fila pela prioridade que a IA deu (conversations.ai_priority). */
+    prioridade_da_fila: z.boolean(),
   })
   .partial()
   .strict()
   .refine((v) => Object.keys(v).length > 0, { message: "nada para alterar" });
 export type CopilotSettingsWrite = z.infer<typeof copilotSettingsWriteSchema>;
 
-export const COPILOT_PADRAO = { mascarar_pii: true } as const;
+/**
+ * Resumo e prioridade nascem DESLIGADOS: cada um gasta uma chamada de modelo por
+ * conversa (o resumo) ou muda a ordem da fila que o time conhece (a prioridade).
+ * Quem liga é quem decide pagar e mudar.
+ */
+export const COPILOT_PADRAO = { mascarar_pii: true, resumo_ao_assumir: false, prioridade_da_fila: false } as const;
 
 export const copilotSettingsSchema = z
   .object({
     mascarar_pii: z.boolean().catch(COPILOT_PADRAO.mascarar_pii),
+    resumo_ao_assumir: z.boolean().catch(COPILOT_PADRAO.resumo_ao_assumir),
+    prioridade_da_fila: z.boolean().catch(COPILOT_PADRAO.prioridade_da_fila),
   })
   .catch({ ...COPILOT_PADRAO });
 export type CopilotSettings = z.infer<typeof copilotSettingsSchema>;

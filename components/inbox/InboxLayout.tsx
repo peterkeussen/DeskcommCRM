@@ -15,6 +15,7 @@ import {
 } from "@/hooks/inbox/useConversationsRealtime";
 import { useConversation, isNotFound } from "@/hooks/inbox/useConversation";
 import { ConversationList } from "./ConversationList";
+import { useConfiguracaoDoCopiloto } from "@/hooks/ai/useConfiguracaoDoCopiloto";
 import { InboxFilters, type InboxFiltersValue, type InboxTab } from "./InboxFilters";
 import { ChatThread } from "./ChatThread";
 import { Composer, type ComposerHandle } from "./Composer";
@@ -167,6 +168,15 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
    * discorda do filtro, porque os dois usam a mesma convenção.
    */
   const { data: automaticoDaOrg } = useAutomaticoAtivo();
+  /**
+   * "Prioridade da fila" é decisão da ORGANIZAÇÃO (IA › Provedores › Assistente
+   * do atendente), não preferência de quem olha: um time inteiro tem de ver a
+   * mesma ordem, senão dois atendentes pegam conversas diferentes como "a
+   * próxima". Vale só na Fila — nas outras abas a ordem é de atividade e o
+   * selo basta.
+   */
+  const { data: copiloto } = useConfiguracaoDoCopiloto();
+  const filaPorPrioridade = filterValue.tab === "unassigned" && copiloto?.prioridade_da_fila === true;
   const composerRef = useRef<ComposerHandle | null>(null);
 
   const filters: ConversationsFilters = useMemo(
@@ -175,10 +185,12 @@ export function InboxLayout({ initialSelectedId = null }: InboxLayoutProps = {})
       search: filterValue.search || undefined,
       channel_session_id: filterValue.channel_session_id,
       tag: filterValue.tag,
+      ...(filaPorPrioridade ? { sort: "priority" as const } : {}),
     }),
     [
       filterValue.tab,
       automaticoDaOrg,
+      filaPorPrioridade,
       filterValue.search,
       filterValue.channel_session_id,
       filterValue.tag,

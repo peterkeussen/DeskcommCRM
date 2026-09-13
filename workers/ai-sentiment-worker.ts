@@ -19,6 +19,8 @@ import { z } from "zod";
 import { resolverAgenteDaConversa } from "@/lib/ai/agents/agente-da-conversa";
 import { mascararParaProvedor } from "@/lib/ai/anonymize/mascarar-para-provedor";
 import { lerConfiguracaoDoCopiloto } from "@/lib/ai/copilot/configuracao";
+import { prioridadeDaMensagem, type Prioridade } from "@/lib/ai/copilot/prioridade";
+import { opcoesSemRaciocinio } from "@/lib/agent-engine/edge/llm/raciocinio";
 import { computeCost } from "@/lib/ai/cost";
 import { decidirElegibilidadeDaConversaViaSupabase } from "@/lib/ai/elegibilidade/consulta-supabase";
 import { ttlDaAutorizacaoMs } from "@/lib/ai/elegibilidade/gate";
@@ -56,12 +58,22 @@ const sentimentSchema = z.object({
     .string()
     .max(280)
     .describe("Justificativa curta da nota, em NO MÁXIMO 100 caracteres"),
+  // Urgência é outra pergunta que a nota: "preciso do boleto até as 17h" é
+  // educado e urgente. `.default(false)`: um modelo que omita o campo não
+  // reprova a classificação inteira — perde só o empurrão na fila.
+  urgente: z
+    .boolean()
+    .default(false)
+    .describe(
+      "true se o cliente tem prazo, reclama de problema em andamento, fala em cancelar, estorno, Procon ou ameaça sair",
+    ),
 });
 
 export interface SentimentResult {
   skipped: boolean;
   reason?: string;
   sentiment_score?: number;
+  prioridade?: Prioridade;
 }
 
 export async function processSentiment(event: EventRow): Promise<SentimentResult> {
@@ -106,7 +118,7 @@ export async function processSentiment(event: EventRow): Promise<SentimentResult
     // ── Load message (programmatic org filter) ────────────────────────────
     const { data: message, error: msgErr } = await admin
       .from("messages")
-      .select("id, body, direction, conversation_id, organization_id, metadata")
+      .select("id, body, direction, conversation_id, organization_id, metadata, created_at")
       .eq("id", messageId)
       .eq("organization_id", event.organization_id)
       .maybeSingle();
@@ -240,6 +252,12 @@ export async function processSentiment(event: EventRow): Promise<SentimentResult
         // parecia erro de esquema e era truncamento. Pico observado: 146 sem
         // as descrições, 84 com elas. 256 dá folga sem virar cheque em branco.
         maxOutputTokens: 256,
+        // Sem isto o Gemini 2.5 Flash raciocina dentro dos 256 tokens e TODA
+        // classificação falha com `AI_NoObjectGeneratedError` — medido contra a
+        // API real em 2026-09-13. Ver `lib/agent-engine/edge/llm/raciocinio.ts`.
+        ...(opcoesSemRaciocinio(resolvido.modelId)
+          ? { providerOptions: opcoesSemRaciocinio(resolvido.modelId) as never }
+          : {}),
         abortSignal: abortController.signal,
       });
 
@@ -307,6 +325,41 @@ export async function processSentiment(event: EventRow): Promise<SentimentResult
       });
     }
 
+    // ── Prioridade da conversa na fila ────────────────────────────────────
+    //
+    // Grava SEMPRE, com o recurso ligado ou não: a classificação já foi paga, e
+    // gravar custa um UPDATE. Quem liga "Prioridade da fila" passa a ver a fila
+    // já ordenada, em vez de esperar a próxima mensagem de cada conversa.
+    //
+    // Só a MENSAGEM MAIS RECENTE do cliente manda: o drain pode entregar fora
+    // de ordem, e uma classificação velha não pode sobrescrever a nova. O
+    // `lte(last_inbound_at, created_at)` recusa a escrita quando já chegou
+    // mensagem depois desta.
+    const prioridade = prioridadeDaMensagem({
+      nota: result.sentiment_score,
+      urgente: result.urgente,
+      limiarDeInsatisfacao: threshold,
+    });
+    const idDaConversa = (conversationId ?? message.conversation_id) as string | null;
+    if (idDaConversa && message.created_at) {
+      const { error: prioridadeErr } = await admin
+        .from("conversations")
+        .update({
+          ai_priority: prioridade,
+          ai_priority_at: new Date().toISOString(),
+          ai_priority_message_id: messageId,
+        })
+        .eq("organization_id", event.organization_id)
+        .eq("id", idDaConversa)
+        .lte("last_inbound_at", message.created_at as string);
+      if (prioridadeErr) {
+        console.warn("[ai-sentiment-worker] ai_priority update failed", {
+          conversation_id: idDaConversa,
+          error: prioridadeErr.message,
+        });
+      }
+    }
+
     // ── Log invocation (fire-and-forget) ──────────────────────────────────
     logInvocation({
       organization_id: event.organization_id,
@@ -365,7 +418,7 @@ export async function processSentiment(event: EventRow): Promise<SentimentResult
       }
     }
 
-    return { skipped: false, sentiment_score: result.sentiment_score };
+    return { skipped: false, sentiment_score: result.sentiment_score, prioridade };
   } catch (err) {
     // Global catch: NEVER throw — must not break the bot path.
     console.warn("[ai-sentiment-worker] sentiment_classify_failed", {
