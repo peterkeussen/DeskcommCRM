@@ -42,6 +42,8 @@ import {
 } from "@/components/ui/select";
 import { useT } from "@/hooks/i18n/useT";
 
+import { CartaoDoAssistente } from "./CartaoDoAssistente";
+
 interface Ponto {
   id: string;
   rotulo: string;
@@ -199,6 +201,8 @@ export function PainelDeProvedores() {
       )}
 
       <CartaoDoPadrao dados={dados} aoSalvar={carregar} />
+
+      <CartaoDoAssistente dados={dados} aoSalvar={carregar} />
 
       <div className="space-y-8">
         {porPapel.map(({ papel, info, pontos }) => (

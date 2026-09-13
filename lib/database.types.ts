@@ -7710,6 +7710,7 @@ export type Database = {
       fn_appointment_confirmation_sweep: { Args: { p_limit?: number; p_now?: string }; Returns: number }
       fn_appointment_enrollment_current: { Args: { p_org: string; p_id: string; p_node?: string | null }; Returns: boolean }
       fn_agenda_settings: { Args: { p_org: string; p_config: Json }; Returns: Json }
+      fn_ai_copilot_settings: { Args: { p_org: string; p_config: Json }; Returns: Json }
       fn_followup_patch: { Args: { p_org: string; p_id: string; p_revision: number; p_patch: Json }; Returns: number }
       fn_followup_apply_step: { Args: { p_org: string; p_id: string; p_revision: number; p_patch: Json; p_event: Json }; Returns: number }
       fn_followup_inline_settle: { Args: { p_org: string; p_id: string; p_worker: string; p_done: boolean; p_error?: string | null; p_retry_at?: string | null; p_hold?: boolean; p_acquired_at?: string }; Returns: boolean }

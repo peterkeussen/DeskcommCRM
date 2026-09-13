@@ -74,6 +74,11 @@ describe("loadEnv — a chave da OpenAI existe no contrato do worker", () => {
  * consertada e esta ficou. O teste abaixo é o que impede a quarta vez.
  */
 describe("loadEnv — a chave da OpenRouter existe no contrato do worker", () => {
+  it("GEMINI_API_KEY é reconhecida e chega ao env do worker", () => {
+    const env = loadEnv({ ...REQUIRED, GEMINI_API_KEY: "AIza-abc" });
+    expect(env.GEMINI_API_KEY).toBe("AIza-abc");
+  });
+
   it("OPENROUTER_API_KEY é reconhecida e chega ao env do worker", () => {
     const env = loadEnv({ ...REQUIRED, OPENROUTER_API_KEY: "sk-or-v1-abc" });
     expect(env.OPENROUTER_API_KEY).toBe("sk-or-v1-abc");

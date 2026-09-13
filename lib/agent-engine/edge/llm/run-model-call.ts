@@ -20,6 +20,7 @@ import { generateText, stepCountIs, type ModelMessage, type ToolSet } from 'ai';
 import type pg from 'pg';
 import { z } from 'zod';
 
+import { mascararParaProvedor } from '@/lib/ai/anonymize/mascarar-para-provedor';
 import { scrubMessage } from '@/lib/sentry/scrub';
 
 import type { Logger } from '../../obs/logger';
@@ -132,6 +133,49 @@ export interface RunModelCallInput {
    * 2B) — resolvido no seam, nunca no call site. Sem ele, config da org.
    */
   llmOverride?: import('./credentials').LlmResolveOverride;
+  /**
+   * Teto de tempo da chamada INTEIRA (todas as tentativas somadas), em ms. Vira
+   * `abortSignal` do `generateText`. Ausente = sem teto, que é o comportamento
+   * de sempre dos pontos antigos — o turno do agente tem a própria fila e o
+   * próprio prazo. Os pontos que um humano está esperando na tela (resumo,
+   * sugestões) passam um teto, porque "carregando" para sempre é pior que erro.
+   */
+  timeoutMs?: number;
+  /**
+   * Quantas vezes o AI SDK tenta de novo em erro retentável (429, 5xx, rede),
+   * com backoff exponencial e respeitando `retry-after` do provedor. Ausente =
+   * padrão do SDK (2). Credencial recusada e modelo inexistente NÃO são
+   * retentados pelo SDK — tentar de novo não muda a resposta.
+   */
+  maxRetries?: number;
+  /**
+   * Mascara CPF, e-mail, telefone e CEP em `system` e no texto das mensagens
+   * ANTES do provedor (`lib/ai/anonymize/mascarar-para-provedor.ts`). Mora no
+   * seam — o último instante antes de sair byte — para nenhum call site
+   * esquecer uma mensagem. Só para pontos que LEEM a conversa (resumir,
+   * classificar): num ponto que ESCREVE para o cliente, a máscara poria
+   * `[TELEFONE]` na mensagem que ele recebe.
+   */
+  mascararPii?: boolean;
+}
+
+/** Aplica a máscara ao texto de cada mensagem; partes não textuais passam intactas. */
+function mascararMensagens(messages: ModelMessage[]): { messages: ModelMessage[]; ocorrencias: number } {
+  let ocorrencias = 0;
+  const mascarar = (t: string) => {
+    const r = mascararParaProvedor(t);
+    ocorrencias += r.contagem.cpf + r.contagem.email + r.contagem.phone + r.contagem.cep;
+    return r.texto;
+  };
+  const saida = messages.map((m): ModelMessage => {
+    if (typeof m.content === 'string') return { ...m, content: mascarar(m.content) } as ModelMessage;
+    if (!Array.isArray(m.content)) return m;
+    const partes = (m.content as Array<{ type: string; text?: string }>).map((p) =>
+      p.type === 'text' && typeof p.text === 'string' ? { ...p, text: mascarar(p.text) } : p,
+    );
+    return { ...m, content: partes } as ModelMessage;
+  });
+  return { messages: saida, ocorrencias };
 }
 
 export interface RunModelCallDeps {
@@ -405,8 +449,23 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
   // em ordem determinística) ganha os breakpoints AQUI, no seam — call sites
   // passam system/tools crus. Tudo por-lead vive em input.messages, DEPOIS do
   // breakpoint. TTL: knob LLM_CACHE_TTL; '1h' é a doutrina.
+  const mascara = input.mascararPii
+    ? {
+        system: input.system === undefined ? undefined : mascararParaProvedor(input.system).texto,
+        ...mascararMensagens(input.messages),
+      }
+    : null;
+  if (mascara !== null && mascara.ocorrencias > 0) {
+    // Só a CONTAGEM — o valor mascarado nunca vai para log.
+    deps.log?.info('llm: dado pessoal mascarado antes do provedor', {
+      organization_id: input.tenantId,
+      purpose,
+      ocorrencias: mascara.ocorrencias,
+    });
+  }
+
   const prefix = buildStablePrefix({
-    system: input.system,
+    system: mascara === null ? input.system : mascara.system,
     tools: input.tools,
     cacheTtl: cfg.cacheTtl ?? '1h',
   });
@@ -422,8 +481,10 @@ export async function runModelCall(db: pg.Pool, cfg: LlmEdgeConfig, input: RunMo
       // ignoram o terceiro argumento e vão ao endpoint intrínseco.
       model: factory(config.apiKey, model, decisao.baseUrl ?? undefined),
       system: prefix.system,
-      messages: input.messages,
+      messages: mascara === null ? input.messages : mascara.messages,
       tools: guardServiceTools(prefix.tools),
+      ...(input.maxRetries === undefined ? {} : { maxRetries: input.maxRetries }),
+      ...(input.timeoutMs === undefined ? {} : { abortSignal: AbortSignal.timeout(input.timeoutMs) }),
       stopWhen: input.maxSteps === undefined ? undefined : stepCountIs(input.maxSteps),
       temperature,
       topP,
@@ -581,7 +642,13 @@ export function normalizarErro(err: unknown): {
     codigo = 'modelo_inexistente';
   } else if (status === 429 || /rate.?limit|quota|insufficient.*credit/i.test(bruto)) {
     codigo = 'limite_ou_saldo';
-  } else if ((status !== null && status >= 500) || /timeout|ECONNREFUSED|fetch failed|network/i.test(bruto)) {
+  } else if (
+    (status !== null && status >= 500) ||
+    // `TimeoutError`/`AbortError` chegam quando o `abortSignal` do `timeoutMs`
+    // dispara: a mensagem é "The operation was aborted", sem a palavra timeout.
+    /timeout|aborted|ECONNREFUSED|fetch failed|network/i.test(bruto) ||
+    (err instanceof Error && (err.name === 'TimeoutError' || err.name === 'AbortError'))
+  ) {
     codigo = 'provedor_indisponivel';
   } else if (/tool|function.?call/i.test(bruto)) {
     codigo = 'modelo_sem_ferramentas';

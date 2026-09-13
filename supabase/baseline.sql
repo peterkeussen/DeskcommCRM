@@ -24066,3 +24066,53 @@ grant execute on function public.fn_decrypt_oauth(bytea) to service_role;
 grant execute on function public.fn_encrypt_oauth(text) to service_role;
 grant execute on function public.fn_lgpd_cascade_redact_contact(uuid, uuid, uuid) to service_role;
 grant execute on function public.fn_update_budget_consumption() to service_role;
+
+-- ---- fn_ai_copilot_settings: liga/desliga do assistente do atendente (migration 0239) ----
+-- Grava `organizations.settings.ai_copilot` com merge, conferindo papel
+-- (manager+) e suporte dentro do corpo. Valida só a FORMA (booleanos, chaves
+-- snake_case, até 12); a lista de chaves mora em lib/schemas/settings.ts.
+-- Idempotente: `create or replace` + revoke/grant.
+create or replace function public.fn_ai_copilot_settings(p_org uuid, p_config jsonb)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_resultado jsonb;
+begin
+  if auth.uid() is null
+     or not public.fn_role_at_least(p_org, 'manager')
+     or not public.fn_support_write_allowed(p_org) then
+    raise exception 'ai_copilot_settings_forbidden' using errcode = '42501';
+  end if;
+
+  if jsonb_typeof(p_config) is distinct from 'object'
+     or (select count(*) from jsonb_object_keys(p_config)) > 12
+     or exists (
+       select 1 from jsonb_each(p_config) e
+        where e.key !~ '^[a-z][a-z_]{0,39}$'
+           or jsonb_typeof(e.value) is distinct from 'boolean'
+     ) then
+    raise exception 'ai_copilot_settings_invalid' using errcode = '22023';
+  end if;
+
+  update public.organizations
+     set settings = jsonb_set(
+           coalesce(settings, '{}'::jsonb),
+           '{ai_copilot}',
+           coalesce(settings->'ai_copilot', '{}'::jsonb) || p_config,
+           true)
+   where id = p_org
+  returning settings->'ai_copilot' into v_resultado;
+
+  if not found then
+    raise exception 'organization_not_found' using errcode = 'P0002';
+  end if;
+
+  return v_resultado;
+end;
+$$;
+
+revoke all on function public.fn_ai_copilot_settings(uuid, jsonb) from public, anon, authenticated;
+grant execute on function public.fn_ai_copilot_settings(uuid, jsonb) to authenticated;

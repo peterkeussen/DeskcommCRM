@@ -189,6 +189,11 @@ const schema = z.object({
   VERCEL_AI_GATEWAY_URL: z.string().optional().default(""),
   ANTHROPIC_API_KEY: z.string().optional().default(""),
   OPENAI_API_KEY: z.string().optional().default(""),
+  // Google Gemini — chave de PLATAFORMA, último degrau como as três de cima: a
+  // credencial cadastrada pela organização em IA › Credenciais vence esta. Sem
+  // ela nada muda. Não existe `GEMINI_MODEL`: qual modelo cada recurso usa é
+  // escolha por ponto, no banco (IA › Provedores), nunca da instalação.
+  GEMINI_API_KEY: z.string().optional().default(""),
 
   // Fusão (Fase 4): DONO ÚNICO dos eventos ai_agent.dispatch_requested.
   // 'engine' (default) = o worker agent-engine é o único consumidor (o cron

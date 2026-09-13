@@ -17,10 +17,12 @@ import { generateObject } from "ai";
 import { z } from "zod";
 
 import { resolverAgenteDaConversa } from "@/lib/ai/agents/agente-da-conversa";
+import { mascararParaProvedor } from "@/lib/ai/anonymize/mascarar-para-provedor";
+import { lerConfiguracaoDoCopiloto } from "@/lib/ai/copilot/configuracao";
 import { computeCost } from "@/lib/ai/cost";
 import { decidirElegibilidadeDaConversaViaSupabase } from "@/lib/ai/elegibilidade/consulta-supabase";
 import { ttlDaAutorizacaoMs } from "@/lib/ai/elegibilidade/gate";
-import { DEFAULT_CLASSIFIER_MODEL, isAiGatewayConfigured } from "@/lib/ai/gateway";
+import { DEFAULT_CLASSIFIER_MODEL } from "@/lib/ai/gateway";
 import { resolverModeloDoPonto } from "@/lib/ai/gateway-binding";
 import { logInvocation } from "@/lib/ai/log-invocation";
 import { SENTIMENT_SYSTEM_PROMPT } from "@/lib/ai/prompts/sentiment";
@@ -64,11 +66,15 @@ export interface SentimentResult {
 
 export async function processSentiment(event: EventRow): Promise<SentimentResult> {
   try {
-    // ── Guard: AI Gateway configured ────────────────────────────────────────
-    if (!isAiGatewayConfigured()) {
-      return { skipped: true, reason: "ai_gateway_key_missing" };
-    }
-
+    // ── Guard: existe modelo utilizável? ────────────────────────────────────
+    //
+    // Havia aqui um `isAiGatewayConfigured()`, que só olha o `.env`. Uma
+    // organização cujo ÚNICO provedor é a credencial cadastrada na tela — o
+    // caminho recomendado, e o único do Google até a GEMINI_API_KEY existir —
+    // pulava todo inbound com `ai_gateway_key_missing` antes de o resolvedor
+    // abaixo, que SABE ler a credencial da organização, ser consultado. A
+    // pergunta certa é a do resolvedor: devolve `null` quando não há modelo
+    // nenhum, e aí o motivo do pulo continua o mesmo.
     // Passar SENTIMENT_MODEL como string cai no gateway da Vercel mesmo sem
     // chave (plano anônimo) e devolve "Unauthenticated ... Configure
     // AI_GATEWAY_API_KEY" — o que quebrava este worker em toda instalação que
@@ -207,6 +213,12 @@ export async function processSentiment(event: EventRow): Promise<SentimentResult
     const abortController = new AbortController();
     const timeout = setTimeout(() => abortController.abort(), CLASSIFY_TIMEOUT_MS);
 
+    // CPF, e-mail, telefone e CEP não mudam o clima de uma mensagem — e são o
+    // que identifica a pessoa num log de provedor. A organização decide em IA ›
+    // Provedores › Assistente do atendente; o padrão é mascarar.
+    const { mascarar_pii } = await lerConfiguracaoDoCopiloto(admin, event.organization_id);
+    const textoParaOProvedor = mascarar_pii ? mascararParaProvedor(body).texto : body;
+
     const start = Date.now();
     let result: z.infer<typeof sentimentSchema>;
     let promptTokens = 0;
@@ -217,7 +229,7 @@ export async function processSentiment(event: EventRow): Promise<SentimentResult
         model: sentimentModel,
         schema: sentimentSchema,
         system: SENTIMENT_SYSTEM_PROMPT,
-        prompt: body,
+        prompt: textoParaOProvedor,
         temperature: 0,
         // 80 era pequeno demais e nunca tinha sido exercitado (o worker morria
         // antes, na autenticação). `generateObject` com Anthropic usa modo

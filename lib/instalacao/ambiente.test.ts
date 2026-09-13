@@ -26,12 +26,12 @@ describe("lerAmbiente", () => {
     expect(a.chavesDeProvedor.openrouter).toBe(true);
   });
 
-  it("o Google nunca aparece como configurado por ambiente", () => {
-    // Não é esquecimento: `resolveOrgLlmConfig` não tem ramo de fallback para
-    // google, e não existe variável dele em lugar nenhum do repo. Prometer aqui
-    // um caminho que o runtime recusa seria pior que não responder.
-    const a = lerAmbiente({ GOOGLE_API_KEY: "qualquer-coisa" });
-    expect(a.chavesDeProvedor.google).toBe(false);
+  it("o Google conta como configurado só pela variável que o runtime lê", () => {
+    // `resolveOrgLlmConfig` tem o ramo `provider === 'google'` lendo
+    // GEMINI_API_KEY. Um nome parecido que o runtime NÃO lê não pode acender a
+    // tela — seria prometer um caminho que o turno recusa.
+    expect(lerAmbiente({ GOOGLE_API_KEY: "qualquer-coisa" }).chavesDeProvedor.google).toBe(false);
+    expect(lerAmbiente({ GEMINI_API_KEY: "AIza-x" }).chavesDeProvedor.google).toBe(true);
   });
 
   it("variável VAZIA é ausente — é o contrato do .env do projeto", () => {

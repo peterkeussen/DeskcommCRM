@@ -231,3 +231,35 @@ export const agendaSettingsWriteSchema = z.strictObject({
   unknown_protection_minutes: z.number().int().min(1).max(10080),
 }).refine(v => v.unknown_protection_minutes >= v.confirmation_delay_minutes, {message:"O prazo de proteção deve ser maior que o prazo de confirmação."});
 export const agendaSettingsSchema = agendaSettingsWriteSchema.catch({confirmation_delay_minutes:10,unknown_protection_minutes:1440});
+
+/**
+ * O assistente do atendente — `organizations.settings.ai_copilot`.
+ *
+ * Cada chave liga ou desliga UM recurso de IA que trabalha para quem atende (e
+ * não para o cliente). Todo campo tem de ter consumidor no mesmo PR em que
+ * entra: chave aceita aqui e lida por ninguém é o botão que não controla nada.
+ *
+ * `mascarar_pii` nasce LIGADA: tirar CPF, e-mail, telefone e CEP do texto que
+ * sai para o provedor não custa qualidade nas leituras (classificar, resumir),
+ * e o padrão de dado pessoal é minimizar. Quem desliga é quem decide.
+ *
+ * Leitura com `.catch` (jsonb livre, campo quebrado cai no padrão e nunca
+ * derruba a tela); escrita estrita, parcial — o banco faz merge.
+ */
+export const copilotSettingsWriteSchema = z
+  .object({
+    mascarar_pii: z.boolean(),
+  })
+  .partial()
+  .strict()
+  .refine((v) => Object.keys(v).length > 0, { message: "nada para alterar" });
+export type CopilotSettingsWrite = z.infer<typeof copilotSettingsWriteSchema>;
+
+export const COPILOT_PADRAO = { mascarar_pii: true } as const;
+
+export const copilotSettingsSchema = z
+  .object({
+    mascarar_pii: z.boolean().catch(COPILOT_PADRAO.mascarar_pii),
+  })
+  .catch({ ...COPILOT_PADRAO });
+export type CopilotSettings = z.infer<typeof copilotSettingsSchema>;

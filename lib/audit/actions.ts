@@ -187,6 +187,10 @@ export const AUDIT_ACTIONS = [
   /** Provedor/modelo de um ponto do sistema que usa IA foi trocado no painel. */
   "ai.purpose_binding_updated",
   "ai.org_default_updated",
+  // Liga/desliga de um recurso do assistente do atendente (resumo, sugestões,
+  // prioridade, máscara de dado pessoal). Muda o que sai para o provedor de IA
+  // e quanto se gasta por conversa.
+  "ai.copilot_settings_changed",
   // Ligar/desligar uma das duas verificações que consultam modelo. Auditável
   // porque muda o que o sistema confere antes de falar com o cliente — e porque
   // custa dinheiro por mensagem.

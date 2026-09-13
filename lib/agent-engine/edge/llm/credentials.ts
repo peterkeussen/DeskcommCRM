@@ -49,6 +49,8 @@ export interface LlmEdgeConfig {
    * era mudo: 5 tentativas, `media_derived_status='failed'`, zero avisos.
    */
   openrouterApiKey?: string;
+  /** Mesma ideia para o Google (Gemini) — `GEMINI_API_KEY`. */
+  geminiApiKey?: string;
   /**
    * TTL do prefixo estável de cache (knob LLM_CACHE_TTL). Opcional para quem
    * monta a config na mão (testes) — o seam aplica a doutrina '1h' quando ausente.
@@ -83,6 +85,7 @@ export function llmEdgeConfigFromEnv(env: {
   ANTHROPIC_API_KEY?: string;
   OPENAI_API_KEY?: string;
   OPENROUTER_API_KEY?: string;
+  GEMINI_API_KEY?: string;
   LLM_CACHE_TTL?: string;
   AI_BUDGET_ENFORCEMENT?: string;
 }): LlmEdgeConfig {
@@ -94,6 +97,7 @@ export function llmEdgeConfigFromEnv(env: {
     ...(env.ANTHROPIC_API_KEY ? { anthropicApiKey: env.ANTHROPIC_API_KEY } : {}),
     ...(env.OPENAI_API_KEY ? { openaiApiKey: env.OPENAI_API_KEY } : {}),
     ...(env.OPENROUTER_API_KEY ? { openrouterApiKey: env.OPENROUTER_API_KEY } : {}),
+    ...(env.GEMINI_API_KEY ? { geminiApiKey: env.GEMINI_API_KEY } : {}),
     cacheTtl: ttl,
     // Sem `if` de valor vazio, ao contrário das chaves acima: aqui o ausente
     // TEM um significado ('on'), e o normalizador é quem o dá. Um campo
@@ -108,7 +112,7 @@ export class LlmNotConfiguredError extends Error {
   override readonly name = 'llm_not_configured';
   constructor() {
     super(
-      'org sem credencial LLM utilizável — cadastre uma chave BYOK ativa/validada em ai_provider_credentials ou defina ANTHROPIC_API_KEY / OPENAI_API_KEY (fallback de plataforma, conforme o provider do modelo)',
+      'org sem credencial LLM utilizável — cadastre uma chave BYOK ativa/validada em ai_provider_credentials ou defina ANTHROPIC_API_KEY / OPENAI_API_KEY / OPENROUTER_API_KEY / GEMINI_API_KEY (fallback de plataforma, conforme o provider do modelo)',
     );
   }
 }
@@ -335,6 +339,8 @@ export async function resolveOrgLlmConfig(
     apiKey = cfg.openaiApiKey;
   } else if (provider === 'openrouter' && cfg.openrouterApiKey) {
     apiKey = cfg.openrouterApiKey;
+  } else if (provider === 'google' && cfg.geminiApiKey) {
+    apiKey = cfg.geminiApiKey;
   } else {
     throw new LlmNotConfiguredError();
   }

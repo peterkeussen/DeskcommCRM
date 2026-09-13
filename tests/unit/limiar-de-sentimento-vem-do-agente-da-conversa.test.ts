@@ -87,6 +87,7 @@ const NOTA = 0.5;
 type Linha = Record<string, unknown>;
 
 interface Banco {
+  organizations?: Linha[];
   messages: Linha[];
   conversations: Linha[];
   ai_agents: Linha[];
@@ -362,5 +363,55 @@ describe("limiar de sentimento — o agente da conversa é quem manda (#486)", (
       r.agenteDoCusto,
       "atribuiu o custo a um agente que não atende esta conversa",
     ).toBeNull();
+  });
+});
+
+describe("sentimento com a credencial SÓ no banco (nenhuma chave no .env)", () => {
+  it("classifica quando o resolvedor acha modelo, mesmo com o .env vazio", async () => {
+    // Era o `isAiGatewayConfigured()` na porta do worker: olhava só o `.env` e
+    // pulava a organização cujo único provedor é a credencial da tela — o
+    // caminho recomendado para o Gemini. Quem decide agora é o resolvedor.
+    const antes = { ...envMock };
+    for (const k of Object.keys(envMock)) envMock[k] = "";
+    try {
+      const { alertas } = await rodar({ sessaoDaConversa: SESSAO_TECNICA });
+      expect(vi.mocked(generateObject)).toHaveBeenCalledTimes(1);
+      expect(alertas).toHaveLength(0);
+    } finally {
+      Object.assign(envMock, antes);
+    }
+  });
+
+  it("sem modelo nenhum, continua pulando com o mesmo motivo", async () => {
+    vi.mocked(resolverModeloDoPonto).mockResolvedValue(null);
+    const resultado = await processSentiment(evento);
+    expect(resultado).toEqual({ skipped: true, reason: "ai_gateway_key_missing" });
+    expect(vi.mocked(generateObject)).not.toHaveBeenCalled();
+  });
+});
+
+describe("sentimento — dado pessoal não sai para o provedor", () => {
+  async function promptEnviado(organizations: Linha[]): Promise<string> {
+    const banco = montarBanco({ sessaoDaConversa: SESSAO_TECNICA });
+    banco.organizations = organizations;
+    banco.messages[0]!["body"] = "sou o cpf 123.456.789-09, me liga 11 98765-4321, estou furioso";
+    vi.mocked(createAdminClient).mockReturnValue(
+      fazerAdmin(banco, []) as unknown as ReturnType<typeof createAdminClient>,
+    );
+    await processSentiment(evento);
+    const args = vi.mocked(generateObject).mock.calls[0]?.[0] as { prompt?: string } | undefined;
+    return args?.prompt ?? "";
+  }
+
+  it("por padrão, CPF e telefone chegam mascarados", async () => {
+    const prompt = await promptEnviado([]);
+    expect(prompt).not.toContain("123.456.789-09");
+    expect(prompt).not.toContain("98765-4321");
+    expect(prompt).toContain("estou furioso");
+  });
+
+  it("a organização que desligou a máscara manda o texto como veio", async () => {
+    const prompt = await promptEnviado([{ id: ORG, settings: { ai_copilot: { mascarar_pii: false } } }]);
+    expect(prompt).toContain("123.456.789-09");
   });
 });

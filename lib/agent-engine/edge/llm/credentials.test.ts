@@ -101,6 +101,16 @@ describe("llmEdgeConfigFromEnv — o que sai do .env chega ao turno", () => {
     expect(cfg.openaiApiKey).toBe("sk-proj-y");
   });
 
+  it("o caminho inteiro: GEMINI_API_KEY resolve um modelo Google numa org sem BYOK", async () => {
+    const cfg = llmEdgeConfigFromEnv({ GEMINI_API_KEY: "AIza-do-env" });
+    const out = await resolveOrgLlmConfig(
+      poolFake({ provider: "google", default_model: "gemini-2.5-flash" }, SEM_BYOK),
+      cfg,
+      "org1",
+    );
+    expect(out.apiKey).toBe("AIza-do-env");
+  });
+
   it("o caminho inteiro: chave do .env resolve um modelo OpenAI numa org sem BYOK", async () => {
     const cfg = llmEdgeConfigFromEnv({ OPENAI_API_KEY: "sk-proj-do-env" });
     const out = await resolveOrgLlmConfig(

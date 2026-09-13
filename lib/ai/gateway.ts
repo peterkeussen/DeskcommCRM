@@ -12,6 +12,7 @@
  */
 
 import { createAnthropic } from "@ai-sdk/anthropic";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import type { LanguageModel } from "ai";
 
@@ -61,7 +62,7 @@ export function isAiGatewayConfigured(): boolean {
  *   2. OpenRouter         -> provider OpenAI-compatível apontado ao endpoint
  *      dela. Os ids da OpenRouter já são `provider/modelo`, então o mesmo id
  *      canônico serve sem tradução.
- *   3. Provider direto     -> Anthropic ou OpenAI, conforme o prefixo do id
+ *   3. Provider direto     -> Anthropic, OpenAI ou Google, conforme o prefixo do id
  *
  * Devolve null quando nada está configurado, para o chamador PULAR com motivo
  * claro em vez de estourar com erro de rede lá dentro.
@@ -86,6 +87,10 @@ export function resolveLanguageModel(model: ModelId): LanguageModel | null {
 
   if (id.startsWith("openai/") && env.OPENAI_API_KEY) {
     return createOpenAI({ apiKey: env.OPENAI_API_KEY })(id.slice("openai/".length));
+  }
+
+  if (id.startsWith("google/") && env.GEMINI_API_KEY) {
+    return createGoogleGenerativeAI({ apiKey: env.GEMINI_API_KEY })(id.slice("google/".length));
   }
 
   return null;

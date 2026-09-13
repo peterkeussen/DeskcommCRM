@@ -8353,6 +8353,24 @@ export const DICIONARIO: Traducoes = {
   },
   "Convite reenviado.": { es: "Invitación reenviada." },
   "Convite revogado.": { es: "Invitación revocada." },
+  // Assistente do atendente (IA › Provedores)
+  "Aplicando…": { es: "Aplicando…" },
+  "Assistente do atendente": { es: "Asistente del agente" },
+  "CPF, e-mail, telefone e CEP são trocados por marcadores nas leituras que a IA faz da conversa. O que o agente escreve para o cliente não é afetado.": { es: "CPF, correo, teléfono y código postal se reemplazan por marcadores en las lecturas que la IA hace de la conversación. Lo que el agente escribe al cliente no se ve afectado." },
+  "Cadastrar chave do Google": { es: "Registrar clave de Google" },
+  "Configuração do assistente inválida.": { es: "Configuración del asistente inválida." },
+  "Dados pessoais serão mascarados antes de ir para a IA.": { es: "Los datos personales se enmascararán antes de enviarse a la IA." },
+  "Estes recursos já usam o Gemini 2.5 Flash.": { es: "Estos recursos ya usan Gemini 2.5 Flash." },
+  "Mascarar dados pessoais antes de enviar à IA": { es: "Enmascarar datos personales antes de enviarlos a la IA" },
+  "Não foi possível alterar o assistente do atendente.": { es: "No se pudo modificar el asistente del agente." },
+  "Não foi possível carregar o assistente do atendente.": { es: "No se pudo cargar el asistente del agente." },
+  "O Gemini 2.5 Flash não está no catálogo de modelos desta instalação.": { es: "Gemini 2.5 Flash no está en el catálogo de modelos de esta instalación." },
+  "O assistente do atendente agora usa o Gemini 2.5 Flash.": { es: "El asistente del agente ahora usa Gemini 2.5 Flash." },
+  "Os textos vão para a IA como chegaram.": { es: "Los textos se envían a la IA tal como llegaron." },
+  "Para usar o Gemini, cadastre primeiro uma chave do Google.": { es: "Para usar Gemini, primero registra una clave de Google." },
+  "Recursos de IA que trabalham para quem atende — não escrevem para o cliente.": { es: "Recursos de IA que trabajan para quien atiende — no le escriben al cliente." },
+  "Só quem administra a organização troca o modelo destes recursos.": { es: "Solo quien administra la organización cambia el modelo de estos recursos." },
+  "Usar Gemini 2.5 Flash nestes recursos": { es: "Usar Gemini 2.5 Flash en estos recursos" },
 };
 
 /**
