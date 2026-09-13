@@ -24086,6 +24086,12 @@ begin
      or not public.fn_support_write_allowed(p_org) then
     raise exception 'ai_copilot_settings_forbidden' using errcode = '42501';
   end if;
+  -- Quem TEM fator de MFA prova na sessão (CLAUDE.md, "cadastrar e provar são
+  -- perguntas diferentes"). Mesma guarda de `fn_agenda_settings`: sem ela, uma
+  -- sessão aal1 roubada desligaria a máscara de dado pessoal de uma organização.
+  if not public.fn_session_mfa_proven() then
+    raise exception 'ai_copilot_mfa_required' using errcode = '42501';
+  end if;
 
   if jsonb_typeof(p_config) is distinct from 'object'
      or (select count(*) from jsonb_object_keys(p_config)) > 12
