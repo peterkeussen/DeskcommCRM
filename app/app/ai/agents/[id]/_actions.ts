@@ -432,7 +432,11 @@ export async function publishAgentAction(
     resourceType: "ai_agent",
     resourceId: agentId,
     requestId,
-    metadata: { version_id: result.version_id, previous_version_id: result.previous_version_id },
+    metadata: {
+      version_id: result.version_id,
+      previous_version_id: result.previous_version_id,
+      respostas_adiadas_reavaliadas: result.respostas_adiadas_reavaliadas,
+    },
   });
 
   revalidatePath(`/app/ai/agents/${agentId}`);
@@ -637,6 +641,7 @@ export async function revertToVersionAction(
       new_version_id: createdId,
       new_version_number: createdNumber,
       previous_version_id: result.previous_version_id,
+      respostas_adiadas_reavaliadas: result.respostas_adiadas_reavaliadas,
     },
   });
 

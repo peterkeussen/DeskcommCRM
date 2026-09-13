@@ -128,6 +128,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
     metadata: {
       version_id: result.version_id,
       previous_version_id: result.previous_version_id,
+      respostas_adiadas_reavaliadas: result.respostas_adiadas_reavaliadas,
     },
   });
 
@@ -137,6 +138,7 @@ export async function POST(req: NextRequest, ctx: Ctx): Promise<Response> {
       version_id: result.version_id,
       previous_version_id: result.previous_version_id,
       published_at: result.published_at,
+      respostas_adiadas_reavaliadas: result.respostas_adiadas_reavaliadas,
     },
     { requestId },
   );

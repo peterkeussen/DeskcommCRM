@@ -121,7 +121,7 @@ import {
 } from './entrega-de-capacidade';
 import { composeSystemPrompt, loadOrgMemory, renderOrgMemory } from './org-memory';
 import { matchesHandoffKeyword } from './agent-config';
-import { msAteAJanelaAbrir } from './janela-de-atendimento';
+import { MOTIVO_ADIADO_PELO_HORARIO, msAteAJanelaAbrir } from './janela-de-atendimento';
 import { janelaDeEnvioAberta, proximaAberturaDaJanela } from '../pacing/engine';
 import { loadChannelKnobs } from '../pacing/store';
 import { avisarJanelaFechada, resolverAvisoDeJanela } from '../pacing/aviso-de-janela';
@@ -1752,8 +1752,8 @@ async function executarTurnoDoAgente(
       await rescheduleJob(pool, liveJob().id, ctx.workerId, {
         acquiredAt: claimOfJob(liveJob())?.acquired_at,
         delayMs: esperaMs,
-        reason:
-          'fora do horário de funcionamento do agente — turno adiado para a abertura da janela',
+        // Nome compartilhado com a liberação na publicação — ver a constante.
+        reason: MOTIVO_ADIADO_PELO_HORARIO,
       });
       runLog.info(
         'turno adiado — fora do horário de funcionamento configurado na versão publicada',

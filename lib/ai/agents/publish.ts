@@ -7,6 +7,7 @@
  */
 import { chaveDePlataforma } from "@/lib/ai/runtime/agent";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { reavaliarRespostasAdiadasPeloHorario } from "./reavaliar-adiados";
 import { PUBLISH_ERROR_CODES, type PublishErrorCode } from "./validation";
 
 export interface PublishOk {
@@ -15,6 +16,11 @@ export interface PublishOk {
   version_id: string;
   previous_version_id: string | null;
   published_at: string;
+  /**
+   * Quantos turnos parados pelo horário de funcionamento voltaram a ser
+   * avaliados com a versão recém-publicada (`reavaliar-adiados.ts`).
+   */
+  respostas_adiadas_reavaliadas: number;
 }
 
 export interface PublishFail {
@@ -38,7 +44,7 @@ export async function publishAgentVersion(
 ): Promise<PublishResult> {
   const { data: version, error: readError } = await admin
     .from("ai_agent_versions")
-    .select("provider,credential_id")
+    .select("provider,credential_id,channel_session_id")
     .eq("organization_id", params.orgId)
     .eq("agent_id", params.agentId)
     .eq("id", params.versionId)
@@ -70,11 +76,18 @@ export async function publishAgentVersion(
   if (!row) {
     return { ok: false, code: "internal_error", message: "no_row_returned" };
   }
+  // Só depois de publicado: o turno liberado precisa encontrar a versão NOVA.
+  const respostas_adiadas_reavaliadas = await reavaliarRespostasAdiadasPeloHorario(admin, {
+    orgId: params.orgId,
+    channelSessionId: (version as { channel_session_id?: string | null }).channel_session_id ?? null,
+  });
+
   return {
     ok: true,
     agent_id: row.agent_id,
     version_id: row.version_id,
     previous_version_id: row.previous_version_id,
     published_at: row.published_at,
+    respostas_adiadas_reavaliadas,
   };
 }

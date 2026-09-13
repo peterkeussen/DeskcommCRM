@@ -32,6 +32,22 @@
  * config quebrada não pode virar mordaça.
  */
 
+/**
+ * O `last_error` que marca um turno ADIADO pelo horário de funcionamento.
+ *
+ * É nome, não texto de log: `lib/ai/agents/reavaliar-adiados.ts` procura
+ * exatamente este valor para liberar os adiados quando uma versão nova é
+ * publicada. Se o turno gravasse uma frase e a liberação procurasse outra, a
+ * publicação não acharia nada — em silêncio, e o cliente esperaria a abertura
+ * da janela ANTIGA. O texto é o mesmo que já estava gravado nas instalações
+ * existentes; mudá-lo deixaria órfãos os jobs adiados antes do deploy.
+ *
+ * Uma linha, menos de 300 caracteres: `normalizeError` (queue.ts) grava
+ * exatamente isto, sem cortar.
+ */
+export const MOTIVO_ADIADO_PELO_HORARIO =
+  'fora do horário de funcionamento do agente — turno adiado para a abertura da janela';
+
 export interface JanelaDeAtendimento {
   /** IANA (`America/Sao_Paulo`). Inválido ⇒ a janela inteira é descartada. */
   timezone: string;

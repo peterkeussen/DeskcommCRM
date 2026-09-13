@@ -116,6 +116,7 @@ describe("applyProposal — guards e fluxo publish-por-ponteiro", () => {
       version_id: NEW_VERSION,
       previous_version_id: PUB_VERSION,
       published_at: "2026-07-20T12:00:00Z",
+      respostas_adiadas_reavaliadas: 0,
     });
     const admin = stubAdmin({
       flywheel_distiller_proposals: [
