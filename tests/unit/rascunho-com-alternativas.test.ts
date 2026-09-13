@@ -43,7 +43,7 @@ function cenario(opts: { ligado: boolean; resposta?: string; falhar?: boolean })
       },
     }) as never;
   const deps = {
-    llmCfg: { geminiApiKey: "AIza-x", cacheTtl: "1h" as const },
+    llmCfg: { geminiApiKey: "AIza-x", anthropicApiKey: "sk-ant-x", cacheTtl: "1h" as const },
     crmCfg: {} as never,
     knobs: {} as never,
     log: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -73,6 +73,24 @@ describe("anexarAlternativas", () => {
     await anexarAlternativas(c.pool, c.deps, entrada());
     expect(c.updates).toHaveLength(1);
     expect(c.updates[0]).toEqual([ORG, "d1", "7", JSON.stringify(["Frete R$ 19,90, 3 dias úteis."])]);
+  });
+
+  it("sem binding, herda o modelo do agente que escreveu o rascunho — não o padrão da organização", async () => {
+    const c = cenario({ ligado: true, resposta: JSON.stringify({ alternativas: ["Frete R$ 19,90, 3 dias úteis."] }) });
+    const vistos: string[] = [];
+    const reg = (c.deps as unknown as { registry: Record<string, (k: string, m: string) => unknown> }).registry;
+    for (const p of Object.keys(reg)) {
+      const orig = reg[p]!;
+      reg[p] = (k: string, m: string) => {
+        vistos.push(`${p}/${m}`);
+        return orig(k, m);
+      };
+    }
+    await anexarAlternativas(c.pool, c.deps, {
+      ...entrada(),
+      herdarDe: { model: "claude-do-agente", provider: "anthropic", credentialId: null },
+    });
+    expect(vistos).toEqual(["anthropic/claude-do-agente"]);
   });
 
   it.each([

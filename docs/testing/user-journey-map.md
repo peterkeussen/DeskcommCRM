@@ -2012,7 +2012,7 @@ Casos da jornada (o atendente humano recebendo uma conversa):
 | Sentimento, `thinkingBudget: 0` | 5/5 classificações coerentes (prazo → urgente; dúvida → neutro; elogio → positivo), ~1 s |
 | `gemini-2.5-flash-lite` e `gemini-2.5-pro` | **"no longer available to new users"** — o catálogo semeado ainda os oferece |
 
-**NÃO COBERTO:** a prova pela tela (Playwright em ambiente fresco) destas três jornadas ainda não foi escrita; os testes acima são de unidade e de API real.
+**Prova pela tela:** `tests/e2e/copiloto-atendente.spec.ts` (em `SPECS_PARTE_3`) — ligar os interruptores, Fila antes/depois com selo, gerar resumo e vê-lo desatualizar, escolher a Opção 2 e aprovar o texto dela. **NÃO MEDIDO LOCALMENTE:** a VPS onde foi escrita roda a instalação de produção com ~780 MB livres e sem Supabase CLI; quem prova é o job `e2e` do PR. O resumo automático no handoff e a classificação de urgência NÃO passam pela spec (provados em unidade e na API real).
 
 ### Outras versões da resposta sugerida (2026-09-13)
 
@@ -2021,4 +2021,4 @@ Casos da jornada (o atendente humano recebendo uma conversa):
 
 **Medido contra a API real (`gemini-3.5-flash`, sem raciocínio):** duas conversas (frete com CEP; reclamação de pedido errado), 2 variações aceitas em cada, ~1,3 s. A primeira medição devolveu só 1 variação no caso do frete: a versão "direta" repetia o CEP que o **cliente** tinha escrito e a checagem de fato novo a descartava — conserto: os fatos da mensagem do cliente também são permitidos.
 
-**NÃO COBERTO:** a spec Playwright desta jornada ainda não existe.
+**Prova pela tela:** mesma spec, passo 5.

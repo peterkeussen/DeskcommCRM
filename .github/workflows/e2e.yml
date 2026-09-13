@@ -572,6 +572,7 @@ jobs:
       # eles são justamente o fim da fila.
       SPECS_PARTE_3: >-
         autonomia-assistida.spec.ts
+        copiloto-atendente.spec.ts
         roteamento-por-canal.spec.ts
         central-avisos-destino.spec.ts
         agenda-presenca-recuperacao.spec.ts

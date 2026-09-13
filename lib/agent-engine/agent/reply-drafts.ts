@@ -123,6 +123,7 @@ export async function generateReplyDraft(
         organizationId: input.organizationId,
         contactId: input.contactId,
         draft: pronto,
+        herdarDe: { model: agent.model, provider: agent.provider, credentialId: agent.credentialId },
         ultimaMensagemDoCliente:
           [...context.context.messages].reverse().find((m) => m.direction === "inbound")?.body ?? null,
       });
@@ -155,6 +156,7 @@ export async function anexarAlternativas(
     contactId: string;
     draft: ReplyDraft;
     ultimaMensagemDoCliente: string | null;
+    herdarDe?: { model: string; provider: string; credentialId: string | null };
   },
 ): Promise<void> {
   const base = input.draft.original_body ?? "";
@@ -168,6 +170,7 @@ export async function anexarAlternativas(
     contactId: input.contactId,
     rascunhoBase: base,
     ultimaMensagemDoCliente: input.ultimaMensagemDoCliente,
+    ...(input.herdarDe ? { herdarDe: input.herdarDe } : {}),
   });
   if (alternativas.length === 0) return;
   await pool.query(

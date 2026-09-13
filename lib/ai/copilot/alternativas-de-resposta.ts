@@ -122,6 +122,12 @@ export async function gerarAlternativas(
     contactId: string;
     rascunhoBase: string;
     ultimaMensagemDoCliente: string | null;
+    /**
+     * O modelo do agente que escreveu o rascunho. Sem binding no painel, as
+     * variações HERDAM dele (degrau 3.5 de `lib/ai/pontos/resolver.ts`) —
+     * provider, modelo e credencial juntos; com binding, o painel vence.
+     */
+    herdarDe?: { model: string; provider: string; credentialId: string | null };
   },
 ): Promise<string[]> {
   const base = input.rascunhoBase.trim();
@@ -144,6 +150,12 @@ export async function gerarAlternativas(
           },
         ],
         semRaciocinio: true,
+        ...(input.herdarDe
+          ? {
+              model: input.herdarDe.model,
+              llmOverride: { provider: input.herdarDe.provider, credentialId: input.herdarDe.credentialId },
+            }
+          : {}),
         ...TEMPO_DAS_ALTERNATIVAS,
       },
       {

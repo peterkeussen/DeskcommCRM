@@ -12,7 +12,25 @@ export function previewFixtureRegistry() {
       | { type: 'text'; text: string }
       | { type: 'tool-call'; toolCallId: string; toolName: string; input: string }
     > = [];
-    if (!options.tools?.length) {
+    // Assistente do atendente (lib/ai/copilot/): o resumo responde em texto de 4
+    // linhas e as alternativas em JSON. Reconhecidos pelo PROMPT de cada ponto,
+    // como os dois ramos abaixo — nada aqui decide o que a tela mostra.
+    if (!options.tools?.length && text.includes('Você resume conversas de atendimento')) {
+      content.push({
+        type: 'text',
+        text: 'Motivo: informações do atendimento\nJá feito: nada\nPendente: responder o cliente\nClima: calmo — pergunta simples',
+      });
+    } else if (!options.tools?.length && text.includes('Resposta base:')) {
+      content.push({
+        type: 'text',
+        text: JSON.stringify({
+          alternativas: [
+            'Olá! Posso ajudar com as informações do atendimento.',
+            'Oi, que bom falar com você! Posso ajudar com as informações do atendimento. O que você gostaria de saber?',
+          ],
+        }),
+      });
+    } else if (!options.tools?.length) {
       const value = text.includes('Turno interno de memória')
         ? {
             notes: [
