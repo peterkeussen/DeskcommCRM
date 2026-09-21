@@ -17,9 +17,12 @@ import {
   useChannelSessions,
   type ChannelSession,
 } from "@/hooks/channels/useChannelSessions";
+import { CHANNEL_PROVIDER_SOCIAL } from "@/lib/channels/capabilities";
 import { usePacingKnobs } from "@/hooks/channels/usePacingKnobs";
 import { AntiBanSheet } from "./AntiBanSheet";
+import { PairingOptions } from "./PairingOptions";
 import { ChannelAiAccess } from "./ChannelAiAccess";
+import { ParaIntegrar } from "./ParaIntegrar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -125,10 +128,15 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
   const [toDelete, setToDelete] = useState<ChannelSession | null>(null);
   const pacingItems = usePacingKnobs().data?.items ?? [];
 
-  const invalidate = useCallback(
-    () => qc.invalidateQueries({ queryKey: ["channel-sessions"] }),
-    [qc],
-  );
+  // Mexer nos canais (criar, excluir, reconectar, health check) muda a LISTA de
+  // conexões — e a ficha de Proteção de envio (`pacing-knobs`) é indexada por
+  // ela. Invalidando só a primeira, a ficha ficava velha: o painel abria sem os
+  // dados da conexão recém-criada (ou apontando para a excluída). As duas
+  // listas andam juntas.
+  const invalidate = useCallback(() => {
+    void qc.invalidateQueries({ queryKey: ["channel-sessions"] });
+    void qc.invalidateQueries({ queryKey: ["pacing-knobs"] });
+  }, [qc]);
 
   // Health check ao vivo de todos os canais — consulta o WAHA e grava
   // last_health_check_at. É a verificação de saúde de verdade (o status do DB
@@ -217,7 +225,7 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
     invalidate();
   }, [invalidate, t]);
 
-  const list = sessions ?? [];
+  const list = (sessions ?? []).filter((session) => session.provider !== CHANNEL_PROVIDER_SOCIAL);
 
   return (
     <div className="flex flex-col gap-4">
@@ -259,6 +267,32 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
       <p className="text-sm text-muted-foreground">
         {t("Novos canais começam em modo de teste, sem respostas automáticas até você autorizar números ou liberar o público.")}
       </p>
+
+      {list.length > 0 ? (
+        <ParaIntegrar
+          campos={[]}
+          ajuda={
+            <div className="space-y-1.5">
+              <p>
+                {t(
+                  "No canal por QR a credencial é interna desta instalação e não serve para fora. Para ligar outro CRM ao mesmo número, conecte-o por uma sessão própria (novo QR).",
+                )}
+              </p>
+              <p>
+                {t(
+                  "Dois dispositivos vinculados recebem as mesmas mensagens — se os dois tiverem atendimento automático, o cliente pode receber resposta dupla.",
+                )}
+              </p>
+            </div>
+          }
+          aviso={
+            <>
+              {t("Não compartilhe esta sessão.")}{" "}
+              {t("Crie uma conexão separada por QR no outro sistema.")}
+            </>
+          }
+        />
+      ) : null}
       {connectionDetail && <details className="rounded-md border p-3 text-sm"><summary>{t("Detalhes para suporte")}</summary><pre className="mt-2 whitespace-pre-wrap break-words">{connectionDetail}</pre><Button variant="outline" size="sm" onClick={async () => {
         if (await copyToClipboard(connectionDetail)) toast.success(t("Copiado!"));
         else toast.error(t("Não foi possível copiar. Selecione e copie manualmente."));
@@ -400,11 +434,16 @@ export function ConnectionsClient({ wahaConfigured }: { wahaConfigured: boolean 
         </div>
       )}
 
-      <AntiBanSheet
-        item={pacingItems.find((i) => i.channel_session.id === antiBanId) ?? null}
-        canWrite
-        onClose={() => setAntiBanId(null)}
-      />
+      {/* Só monta quando alguém pediu para abrir: assim o AntiBanSheet distingue
+          "painel fechado" de "a conexão pedida sumiu da lista" — o segundo caso
+          vira estado visível ali dentro, não um painel mudo. */}
+      {antiBanId !== null && (
+        <AntiBanSheet
+          item={pacingItems.find((i) => i.channel_session.id === antiBanId) ?? null}
+          canWrite
+          onClose={() => setAntiBanId(null)}
+        />
+      )}
 
       {toDelete && (
         <ExcluirCanalDialog
@@ -666,12 +705,13 @@ function QrDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
             {t(
-              "No celular: WhatsApp → Aparelhos conectados → Conectar um aparelho → escaneie o código.",
+              "Escolha QR Code ou código de pareamento e confirme no WhatsApp do celular.",
             )}
           </DialogDescription>
         </DialogHeader>
         <div className="flex min-h-[16rem] flex-col items-center justify-center gap-3 py-2">
           {status === "SCAN_QR_CODE" ? (
+            <PairingOptions key={sessionId} sessionId={sessionId} qr={
             // Sem `key={tick}`: trocar só o src reaproveita o mesmo <img>, e o
             // browser segura o frame anterior até decodificar o novo. Remontar o
             // elemento a cada refresh é o que causaria o flash branco.
@@ -681,6 +721,7 @@ function QrDialog({
               alt={t("QR Code para conectar WhatsApp")}
               className="h-64 w-64 rounded-md border bg-white p-2"
             />
+            } />
           ) : status === "WORKING" ? (
             <div className="flex flex-col items-center gap-2 text-sm font-medium text-success-fg">
               <CheckCircle size={28} weight="fill" aria-hidden />
